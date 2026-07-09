@@ -1,0 +1,2536 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Beartly UI Builder — v0.1</title>
+<style>
+  :root{
+    --bg: #0b1f33;
+    --panel: #0f2540;
+    --panel-edge: rgba(140,200,255,0.16);
+    --ink: #dfeeff;
+    --ink-dim: #9db6d1;
+    --ink-faint: #6d87a3;
+    --cyan: #6fd3ff;
+    --cyan-soft: rgba(111,211,255,0.14);
+    --amber: #ffb454;
+    --danger: #ff6b6b;
+    --mono: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+    --sans: ui-sans-serif, system-ui, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+  *{ box-sizing: border-box; }
+  html,body{ height:100%; margin:0; }
+  body{
+    font-family: var(--sans);
+    background: var(--bg);
+    color: var(--ink);
+    display:flex;
+    flex-direction:column;
+    overflow:hidden;
+  }
+  button{ font-family: inherit; cursor:pointer; }
+
+  /* ---------- toolbar ---------- */
+  #toolbar{
+    height:52px;
+    flex:0 0 auto;
+    display:flex;
+    align-items:center;
+    gap:10px;
+    padding:0 14px;
+    background: var(--panel);
+    border-bottom:1px solid var(--panel-edge);
+  }
+  .brand{
+    font-family: var(--mono);
+    font-size:13px;
+    letter-spacing:.06em;
+    color:var(--cyan);
+    display:flex; align-items:center; gap:8px;
+    margin-right:8px;
+  }
+  .brand svg{ width:22px; height:auto; flex:0 0 auto; display:block; }
+  .tbtn{
+    background:transparent;
+    border:1px solid var(--panel-edge);
+    color:var(--ink-dim);
+    padding:7px 12px;
+    border-radius:6px;
+    font-size:12.5px;
+    display:flex; align-items:center; gap:6px;
+    transition: all .12s ease;
+  }
+  .tbtn:hover:not(:disabled){ color:var(--ink); border-color:var(--cyan); background:var(--cyan-soft); }
+  .tbtn:disabled{ opacity:.35; cursor:default; }
+  .tbtn.active{ color:var(--cyan); border-color:var(--cyan); background:var(--cyan-soft); }
+  .tgroup{ display:flex; gap:4px; padding:0 6px; border-left:1px solid var(--panel-edge); }
+  .spacer{ flex:1; }
+  #file-input{ display:none; }
+
+  /* ---------- main layout ---------- */
+  #main{ flex:1; display:flex; min-height:0; }
+
+  #left-panel, #right-panel{
+    width:260px;
+    flex:0 0 auto;
+    background: var(--panel);
+    border-right:1px solid var(--panel-edge);
+    display:flex;
+    flex-direction:column;
+    min-height:0;
+  }
+  #right-panel{ border-right:none; border-left:1px solid var(--panel-edge); }
+
+  .panel-tabs{ display:flex; border-bottom:1px solid var(--panel-edge); flex:0 0 auto; }
+  .panel-tab{
+    flex:1; background:transparent; border:none; color:var(--ink-faint);
+    padding:11px 0; font-size:12px; letter-spacing:.04em; text-transform:uppercase;
+    border-bottom:2px solid transparent; font-family:var(--mono);
+  }
+  .panel-tab.active{ color:var(--cyan); border-bottom-color:var(--cyan); }
+  .panel-body{ flex:1; overflow-y:auto; padding:14px; min-height:0; }
+  .panel-body h4{ font-size:11px; text-transform:uppercase; letter-spacing:.08em; color:var(--ink-faint); margin:16px 0 8px; font-weight:600; }
+  .panel-body h4:first-child{ margin-top:0; }
+
+  /* component palette */
+  .palette-grid{ display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+  .palette-item{
+    background:#0c1e35; border:1px solid var(--panel-edge); border-radius:8px;
+    padding:14px 8px 10px; display:flex; flex-direction:column; align-items:center; gap:6px;
+    color:var(--ink-dim); font-size:11px; cursor:grab; user-select:none;
+    transition: border-color .12s ease, color .12s ease;
+  }
+  .palette-item:hover{ border-color:var(--cyan); color:var(--ink); }
+  .palette-item .glyph{ font-size:18px; color:var(--cyan); line-height:1; }
+  .palette-hint{ font-size:11.5px; color:var(--ink-faint); line-height:1.5; margin-top:14px; }
+
+  /* layers */
+  .layer-row{
+    display:flex; align-items:center; gap:6px;
+    padding:6px 6px 6px 0; border-radius:5px; font-size:12.5px; color:var(--ink-dim);
+    cursor:pointer;
+  }
+  .layer-row:hover{ background:rgba(255,255,255,0.04); }
+  .layer-row.selected{ background:var(--cyan-soft); color:var(--cyan); }
+  .layer-row .lg{ color:var(--ink-faint); font-size:13px; width:16px; text-align:center; flex:0 0 auto; }
+  .layer-row .lt{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap; flex:1; }
+  .layer-row .lactions{ display:none; gap:2px; flex:0 0 auto; }
+  .layer-row:hover .lactions{ display:flex; }
+  .layer-row .lactions button{
+    background:none; border:none; color:var(--ink-faint); font-size:11px; padding:2px 4px; border-radius:3px;
+  }
+  .layer-row .lactions button:hover{ color:var(--ink); background:rgba(255,255,255,0.08); }
+  .layer-children{ margin-left:16px; border-left:1px solid var(--panel-edge); padding-left:2px; }
+
+  /* inspector */
+  .field{ margin-bottom:12px; }
+  .field label{ display:block; font-size:11px; color:var(--ink-faint); margin-bottom:5px; text-transform:uppercase; letter-spacing:.03em; }
+  .field input[type="text"], .field textarea, .field select{
+    width:100%; background:#0c1e35; border:1px solid var(--panel-edge); border-radius:5px;
+    color:var(--ink); padding:7px 9px; font-size:13px; font-family: var(--sans);
+  }
+  .field input[type="color"]{
+    width:100%; height:32px; background:#0c1e35; border:1px solid var(--panel-edge); border-radius:5px; padding:2px;
+  }
+  .field textarea{ resize:vertical; min-height:56px; font-family: var(--mono); font-size:12.5px; }
+  .field-row{ display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+  .seg{ display:flex; border:1px solid var(--panel-edge); border-radius:6px; overflow:hidden; }
+  .seg button{
+    flex:1; background:#0c1e35; border:none; color:var(--ink-faint); padding:7px 4px; font-size:14px;
+    border-right:1px solid var(--panel-edge);
+  }
+  .seg button:last-child{ border-right:none; }
+  .seg button.active{ background:var(--cyan-soft); color:var(--cyan); }
+  .empty-inspector{ color:var(--ink-faint); font-size:13px; line-height:1.6; padding-top:20px; text-align:center; }
+  .node-type-badge{
+    display:inline-block; font-family:var(--mono); font-size:11px; color:var(--amber);
+    background:rgba(255,180,84,0.12); padding:3px 8px; border-radius:4px; margin-bottom:14px;
+  }
+  .responsive-banner{
+    font-size:12px; color:var(--ink-dim); background:var(--cyan-soft); border:1px solid rgba(111,211,255,0.3);
+    border-radius:6px; padding:9px 10px; margin-bottom:14px; line-height:1.5;
+  }
+  .responsive-banner strong{ color:var(--cyan); }
+  .responsive-banner button{
+    display:block; margin-top:7px; background:transparent; border:1px solid var(--cyan); color:var(--cyan);
+    font-size:11px; padding:4px 9px; border-radius:5px;
+  }
+  .responsive-banner button:hover{ background:var(--cyan-soft); }
+  .danger-btn{
+    width:100%; margin-top:8px; background:rgba(255,107,107,0.1); border:1px solid rgba(255,107,107,0.3);
+    color:var(--danger); padding:8px; border-radius:6px; font-size:12.5px;
+  }
+  .danger-btn:hover{ background:rgba(255,107,107,0.18); }
+
+  /* ---------- center: canvas / code ---------- */
+  #center{ flex:1; display:flex; flex-direction:column; min-width:0; background: var(--bg); }
+
+  #view-toolbar{
+    flex:0 0 auto; height:42px; display:flex; align-items:center; gap:8px; padding:0 14px;
+    border-bottom:1px solid var(--panel-edge);
+  }
+  #view-toolbar .device-group{ display:flex; gap:2px; background:var(--panel); border:1px solid var(--panel-edge); border-radius:6px; padding:2px; }
+  #view-toolbar .device-group button{
+    background:transparent; border:none; color:var(--ink-faint); padding:5px 9px; border-radius:4px; font-size:12px;
+  }
+  #view-toolbar .device-group button.active{ background:var(--cyan-soft); color:var(--cyan); }
+
+  #canvas-viewport{
+    flex:1; overflow:auto; display:flex; justify-content:center; padding:32px;
+    background:
+      linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px) 0 0/24px 24px,
+      linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px) 0 0/24px 24px;
+  }
+  #canvas-frame{
+    position:relative;
+    width:100%; max-width:1180px;
+    background:#ffffff;
+    box-shadow: 0 0 0 1px rgba(140,200,255,0.15), 0 24px 60px rgba(0,0,0,0.35);
+    flex:0 0 auto;
+    height:fit-content;
+    min-height:400px;
+    transition: max-width .18s ease;
+  }
+  #canvas-frame.device-tablet{ max-width:768px; }
+  #canvas-frame.device-mobile{ max-width:375px; }
+
+  #canvas-root{ min-height:400px; color:#1a1a1a; font-family: var(--sans); }
+
+  .canvas-node{ position:relative; box-sizing:border-box; cursor:grab; }
+  .canvas-node--root{ cursor:default; }
+  .canvas-node.is-empty{ display:flex; align-items:center; justify-content:center; }
+  .canvas-node.is-empty::after{
+    content: attr(data-empty-label);
+    color:#a9b4c2; font-size:12px; font-family: var(--mono); pointer-events:none;
+  }
+  .canvas-node--root.is-empty::after{ content: "Drag a component here to get started"; }
+  .canvas-node:hover{ outline:1px dashed rgba(37,99,235,0.45); outline-offset:-1px; }
+  .canvas-node.is-selected{ outline:2px solid #2563EB; outline-offset:-1px; }
+  .canvas-node.drop-target{ outline:2px dashed var(--cyan) !important; background-color:rgba(111,211,255,0.08) !important; }
+  .canvas-node--btnface{ display:inline-flex; align-items:center; justify-content:center; cursor:default; white-space:nowrap; }
+  .canvas-node--inputface{ display:flex; align-items:center; color:#8892a0; background:#fff; cursor:default; }
+  .canvas-node--mediaface{
+    display:flex; align-items:center; justify-content:center; color:#94a3b8; background:#1e293b;
+    font-family:var(--mono); font-size:12px; text-align:center; padding:12px; word-break:break-all;
+  }
+  .canvas-node--carouselface{ position:relative; background:#1e293b; overflow:hidden; }
+  .carousel-proxy-arrow{
+    position:absolute; top:50%; transform:translateY(-50%); width:26px; height:26px; border-radius:999px;
+    background:rgba(0,0,0,0.5); color:#fff; display:flex; align-items:center; justify-content:center; font-size:16px; pointer-events:none;
+  }
+  .carousel-proxy-arrow.left{ left:8px; } .carousel-proxy-arrow.right{ right:8px; }
+  .carousel-proxy-dots{ position:absolute; bottom:8px; left:50%; transform:translateX(-50%); color:#fff; font-size:10px; letter-spacing:3px; pointer-events:none; }
+  .canvas-node--anchorface{
+    display:flex; align-items:center; color:var(--ink-faint, #6d87a3); background:repeating-linear-gradient(90deg, #cbd5e1 0 6px, transparent 6px 12px);
+    font-family:var(--mono); font-size:11px; padding-left:6px; cursor:default;
+  }
+  .canvas-node--spacerface{ position:relative; }
+  .canvas-node--spacerface::after{
+    content:"↕ spacer"; position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+    font-family:var(--mono); font-size:10px; color:#c7d2e0; border-top:1px dashed #d8e0ea; border-bottom:1px dashed #d8e0ea; pointer-events:none;
+  }
+  .canvas-node--panel-wrap{ border:1px dashed rgba(37,99,235,0.35); border-radius:6px; margin-bottom:10px; padding:6px; }
+  .canvas-node--panel-label{ font-family:var(--mono); font-size:10.5px; color:#2563eb; margin-bottom:6px; padding:0 4px; }
+  .has-progress-label{ position:relative; margin-top:18px; }
+  .has-progress-label::before{
+    content: attr(data-progress-label); position:absolute; bottom:100%; left:0; margin-bottom:4px;
+    font-size:11px; color:#475569; font-family:var(--sans); white-space:nowrap;
+  }
+
+  #selection-overlay{ position:absolute; pointer-events:none; z-index:5; display:none; }
+  #selection-overlay .sel-toolbar{
+    position:absolute; top:-27px; left:0; display:flex; align-items:center; gap:4px;
+    background:#2563EB; border-radius:5px; padding:3px 4px; pointer-events:auto; white-space:nowrap;
+  }
+  #selection-overlay .sel-toolbar .type-label{ color:#fff; font-family:var(--mono); font-size:10.5px; padding:0 6px; }
+  #selection-overlay .sel-toolbar button{ background:none; border:none; color:#dbe9ff; font-size:12px; padding:3px 6px; border-radius:3px; }
+  #selection-overlay .sel-toolbar button:hover{ background:rgba(255,255,255,0.2); color:#fff; }
+  #resize-handle{
+    position:absolute; right:-5px; bottom:-5px; width:10px; height:10px;
+    background:#2563EB; border:2px solid #fff; border-radius:2px; pointer-events:auto; cursor:nwse-resize;
+  }
+
+  /* code view */
+  #code-view{ flex:1; display:none; overflow:auto; padding:20px 28px; }
+  #code-view.active{ display:block; }
+  #canvas-viewport.hidden{ display:none; }
+  .code-block{ margin-bottom:20px; }
+  .code-block .code-head{ display:flex; align-items:center; justify-content:space-between; margin-bottom:6px; }
+  .code-block h4{ font-family:var(--mono); font-size:12px; color:var(--cyan); text-transform:uppercase; letter-spacing:.06em; margin:0; }
+  .code-block .code-actions{ display:flex; gap:6px; }
+  .code-block .code-actions button{
+    background:var(--panel); border:1px solid var(--panel-edge); color:var(--ink-dim); font-size:11px; padding:4px 10px; border-radius:5px;
+  }
+  .code-block .code-actions button:hover{ color:var(--cyan); border-color:var(--cyan); }
+  .code-block pre{
+    background:var(--panel); border:1px solid var(--panel-edge); border-radius:6px; padding:16px;
+    font-family:var(--mono); font-size:12.5px; line-height:1.6; color:var(--ink); overflow-x:auto; margin:0;
+    max-height:340px; overflow-y:auto;
+  }
+
+  /* toast */
+  .modal-overlay{
+    position:fixed; inset:0; background:rgba(4,12,22,0.65); z-index:200;
+    display:flex; align-items:center; justify-content:center; padding:20px;
+  }
+  .modal-panel{
+    background:var(--panel); border:1px solid var(--panel-edge); border-radius:10px;
+    padding:24px; width:100%; max-width:640px; max-height:80vh; overflow-y:auto;
+    box-shadow:0 24px 60px rgba(0,0,0,0.45);
+  }
+  .modal-panel h3{ margin:0 0 6px; font-size:16px; color:#fff; }
+  .modal-panel p{ margin:0 0 18px; font-size:13px; color:var(--ink-faint); }
+  .template-grid{ display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+  .template-card{
+    text-align:left; background:#0c1e35; border:1px solid var(--panel-edge); border-radius:8px;
+    padding:14px; cursor:pointer; color:var(--ink); transition:border-color .12s ease;
+  }
+  .template-card:hover{ border-color:var(--cyan); }
+  .template-card .t-glyph{ font-size:20px; color:var(--cyan); margin-bottom:8px; display:block; }
+  .template-card .t-name{ font-size:13.5px; font-weight:600; margin-bottom:4px; display:block; }
+  .template-card .t-desc{ font-size:11.5px; color:var(--ink-faint); line-height:1.5; }
+
+  #toast{
+    position:fixed; bottom:20px; left:50%; transform:translateX(-50%) translateY(20px);
+    background:#0f2540; border:1px solid var(--cyan); color:var(--ink); padding:9px 18px; border-radius:7px;
+    font-size:12.5px; opacity:0; pointer-events:none; transition: all .2s ease; z-index:100; font-family:var(--mono);
+  }
+  #toast.show{ opacity:1; transform:translateX(-50%) translateY(0); }
+
+  ::-webkit-scrollbar{ width:10px; height:10px; }
+  ::-webkit-scrollbar-track{ background:transparent; }
+  ::-webkit-scrollbar-thumb{ background:rgba(140,200,255,0.2); border-radius:6px; }
+  ::-webkit-scrollbar-thumb:hover{ background:rgba(140,200,255,0.35); }
+</style>
+</head>
+<body>
+
+  <div id="toolbar">
+    <div class="brand">
+      <svg viewBox="0 0 946.765355 719.207457" xmlns="http://www.w3.org/2000/svg">
+        <g transform="translate(-226.086139,944.713887) scale(0.100000,-0.100000)">
+          <path fill="#6fd3ff" d="M5545 9441 c-125 -32 -215 -145 -215 -271 0 -151 122 -270 275 -270
+58 0 107 14 146 41 25 17 26 17 70 -8 272 -161 515 -463 633 -787 41 -111 62
+-136 114 -136 27 0 69 35 76 65 13 52 -95 310 -202 483 -127 204 -319 395
+-515 513 l-52 31 -1 71 c0 79 -20 129 -74 191 -54 62 -175 98 -255 77z"/>
+          <path fill="#6fd3ff" d="M8308 9437 c-26 -8 -55 -20 -65 -27 -91 -69 -127 -136 -128 -236 l0
+-71 -75 -46 c-224 -137 -427 -360 -566 -622 -53 -99 -121 -270 -130 -324 -6
+-36 -3 -43 24 -71 63 -62 114 -31 162 97 95 257 264 503 458 666 83 69 199
+147 218 147 5 0 31 -11 58 -25 131 -67 307 -2 370 135 42 93 19 229 -52 303
+-65 69 -181 100 -274 74z"/>
+          <path fill="#6fd3ff" d="M3840 8114 c-350 -43 -672 -174 -935 -378 -114 -90 -290 -277 -364
+-387 -114 -170 -202 -379 -251 -594 -27 -118 -38 -419 -20 -561 64 -517 350
+-968 800 -1264 587 -386 1325 -401 1926 -39 235 142 464 358 615 581 22 33 39
+61 37 63 -2 2 -105 -47 -229 -109 -340 -170 -611 -272 -851 -320 -410 -83
+-755 -50 -1063 99 -420 203 -707 576 -780 1015 -25 144 -16 356 19 490 62 236
+158 402 333 571 341 332 860 455 1398 333 475 -109 976 -381 1491 -810 154
+-128 445 -411 589 -572 9 -10 22 -9 66 6 29 11 71 22 92 26 20 4 37 10 37 13
+0 9 -185 255 -296 393 -633 793 -1319 1279 -1994 1416 -119 24 -161 27 -360
+29 -124 2 -241 1 -260 -1z"/>
+          <path fill="#6fd3ff" d="M9673 8109 c-673 -78 -1413 -556 -2042 -1319 -151 -183 -397 -508
+-390 -514 4 -3 148 -44 174 -49 6 -1 72 63 149 143 658 689 1380 1137 2035
+1263 155 29 479 32 611 4 437 -92 765 -330 944 -684 87 -174 119 -317 119
+-533 0 -142 -3 -180 -25 -275 -63 -269 -186 -484 -390 -681 -149 -144 -348
+-265 -541 -329 -318 -105 -695 -98 -1101 21 -185 54 -358 127 -629 262 -137
+68 -250 122 -252 120 -2 -2 25 -44 60 -93 216 -302 487 -523 822 -670 206 -90
+407 -134 653 -142 625 -20 1214 284 1570 812 338 500 383 1190 114 1726 -113
+227 -347 488 -564 632 -246 162 -506 262 -789 301 -120 17 -403 20 -528 5z"/>
+          <path fill="#6fd3ff" d="M6844 7801 c-225 -64 -380 -233 -429 -466 -20 -98 -14 -189 21 -293
+114 -342 498 -500 824 -340 90 45 216 170 258 258 43 88 62 169 62 261 0 108
+-14 172 -61 268 -72 151 -221 274 -384 316 -78 20 -214 18 -291 -4z"/>
+          <path fill="#6fd3ff" d="M6845 5829 c-342 -43 -620 -245 -794 -579 -27 -52 -58 -119 -69 -147
+l-20 -53 26 -2 c15 -1 478 -2 1030 -2 889 -1 1002 0 1002 14 0 23 -71 176
+-117 255 -224 379 -614 569 -1058 514z"/>
+          <path fill="#ffb454" d="M5847 4576 c-26 -68 -32 -492 -9 -636 l7 -45 1146 -3 1146 -2 7 31
+c18 92 26 316 16 456 -5 81 -13 163 -16 181 l-6 32 -1143 0 c-973 0 -1144 -2
+-1148 -14z"/>
+          <path fill="#6fd3ff" d="M6040 3353 c120 -223 282 -417 737 -883 l210 -215 54 46 c109 93 514
+496 604 601 50 59 121 148 156 198 60 84 189 305 189 322 0 5 -448 8 -996 8
+l-996 0 42 -77z"/>
+        </g>
+      </svg>
+      Beartly UI Builder
+    </div>
+    <div class="tgroup" style="border-left:none; padding-left:0;">
+      <button class="tbtn" id="btn-new" title="New project from a template">New / Templates</button>
+      <button class="tbtn" id="btn-import" title="Import project JSON">Import</button>
+      <input type="file" id="file-input" accept="application/json">
+    </div>
+    <div class="tgroup">
+      <button class="tbtn" id="btn-undo" title="Undo (Ctrl+Z)">↶ Undo</button>
+      <button class="tbtn" id="btn-redo" title="Redo (Ctrl+Shift+Z)">↷ Redo</button>
+    </div>
+    <div class="spacer"></div>
+    <div class="tgroup">
+      <button class="tbtn" id="btn-export-json" title="Export project as JSON">Export JSON</button>
+      <button class="tbtn active" id="btn-export-html" title="Export as index.html">⬇ Export HTML</button>
+    </div>
+  </div>
+
+  <div id="main">
+
+    <div id="left-panel">
+      <div class="panel-tabs">
+        <button class="panel-tab active" data-tab="components">Components</button>
+        <button class="panel-tab" data-tab="layers">Layers</button>
+      </div>
+      <div class="panel-body" id="tab-components">
+        <div id="palette"></div>
+        <p class="palette-hint">Drop a component into any container. Containers with a dashed outline accept children — drop near the top or bottom of a sibling to control ordering.</p>
+      </div>
+      <div class="panel-body" id="tab-layers" style="display:none;">
+        <h4>Hierarchy</h4>
+        <div id="layers-tree"></div>
+      </div>
+    </div>
+
+    <div id="center">
+      <div id="view-toolbar">
+        <div class="device-group">
+          <button data-view="preview" class="active">Preview</button>
+          <button data-view="code">Code</button>
+        </div>
+        <div class="spacer"></div>
+        <div class="device-group">
+          <button data-device="desktop" class="active">Desktop</button>
+          <button data-device="tablet">Tablet</button>
+          <button data-device="mobile">Mobile</button>
+        </div>
+      </div>
+
+      <div id="canvas-viewport">
+        <div id="canvas-frame">
+          <div id="canvas-root"></div>
+          <div id="selection-overlay">
+            <div class="sel-toolbar">
+              <span class="type-label" id="sel-type-label"></span>
+              <button id="sel-duplicate" title="Duplicate (Ctrl+D)">⧉</button>
+              <button id="sel-delete" title="Delete (Del)">✕</button>
+            </div>
+            <div id="resize-handle"></div>
+          </div>
+        </div>
+      </div>
+
+      <div id="code-view">
+        <div class="code-block">
+          <div class="code-head">
+            <h4>HTML</h4>
+            <div class="code-actions">
+              <button data-copy="html">Copy</button>
+            </div>
+          </div>
+          <pre><code id="code-html"></code></pre>
+        </div>
+        <div class="code-block">
+          <div class="code-head">
+            <h4>CSS</h4>
+            <div class="code-actions">
+              <button data-copy="css">Copy</button>
+            </div>
+          </div>
+          <pre><code id="code-css"></code></pre>
+        </div>
+        <div class="code-block">
+          <div class="code-head">
+            <h4>JS</h4>
+            <div class="code-actions">
+              <button data-copy="js">Copy</button>
+            </div>
+          </div>
+          <pre><code id="code-js"></code></pre>
+        </div>
+      </div>
+    </div>
+
+    <div id="right-panel">
+      <div class="panel-tabs">
+        <button class="panel-tab active" style="cursor:default;">Inspector</button>
+      </div>
+      <div class="panel-body" id="inspector-body">
+        <div class="empty-inspector">Select an element on the canvas<br>to edit its properties.</div>
+      </div>
+    </div>
+
+  </div>
+
+  <div id="template-modal" class="modal-overlay" style="display:none;">
+    <div class="modal-panel">
+      <h3>Start a new project</h3>
+      <p>Choose a template to start from, or begin blank.</p>
+      <div class="template-grid" id="template-grid"></div>
+      <button class="tbtn" id="template-cancel" style="margin-top:14px;">Cancel</button>
+    </div>
+  </div>
+
+  <div id="toast"></div>
+
+<script>
+(function(){
+  "use strict";
+
+  /* =========================================================
+     1. COMPONENT DEFINITIONS
+     ========================================================= */
+
+  var COMPONENT_DEFS = {
+    // -- Layout --
+    Container:     { category:"Layout", label:"Container",      glyph:"▭", canHaveChildren:true,
+                     defaultLayout:{ display:"block" },
+                     defaultStyle:{ padding:"16px", minHeight:"60px" } },
+    FlexContainer: { category:"Layout", label:"Flex Container",  glyph:"▤", canHaveChildren:true,
+                     defaultLayout:{ display:"flex", direction:"row", justify:"flex-start", align:"stretch", gap:"12px" },
+                     defaultStyle:{ padding:"16px", minHeight:"60px" } },
+    Card:          { category:"Layout", label:"Card",            glyph:"▦", canHaveChildren:true,
+                     defaultLayout:{ display:"block" },
+                     defaultStyle:{ padding:"20px", background:"#ffffff", borderRadius:"12px", minHeight:"80px", boxShadow:"0 4px 20px rgba(0,0,0,0.08)" } },
+    Divider:       { category:"Layout", label:"Divider",         glyph:"―", canHaveChildren:false,
+                     defaultLayout:{},
+                     defaultStyle:{ background:"#e2e8f0", height:"1px", width:"100%" } },
+    Spacer:        { category:"Layout", label:"Spacer",          glyph:"↕", canHaveChildren:false,
+                     defaultLayout:{},
+                     defaultStyle:{ height:"40px", width:"100%" } },
+    Anchor:        { category:"Layout", label:"Menu Anchor",     glyph:"⚓", canHaveChildren:false,
+                     defaultLayout:{},
+                     defaultStyle:{ height:"1px", width:"100%" },
+                     defaultAnchorId:"section-1" },
+    Tabs:          { category:"Layout", label:"Nested Tabs",     glyph:"⇥", canHaveChildren:true,
+                     defaultLayout:{ display:"block" },
+                     defaultStyle:{ padding:"0px", minHeight:"80px" },
+                     defaultTabLabels:["Tab 1","Tab 2","Tab 3"] },
+    Accordion:     { category:"Layout", label:"Nested Accordion",glyph:"⌄", canHaveChildren:true,
+                     defaultLayout:{ display:"block" },
+                     defaultStyle:{ padding:"0px", minHeight:"80px" },
+                     defaultTabLabels:["Section 1","Section 2","Section 3"] },
+
+    // -- Typography --
+    Heading:       { category:"Typography", label:"Heading",    glyph:"H", canHaveChildren:false,
+                     defaultLayout:{},
+                     defaultStyle:{ fontSize:"28px", color:"#0f172a", fontWeight:"700" },
+                     defaultContent:"Heading" },
+    Text:          { category:"Typography", label:"Text",       glyph:"T", canHaveChildren:false,
+                     defaultLayout:{},
+                     defaultStyle:{ fontSize:"16px", color:"#1a1a1a" },
+                     defaultContent:"Text block" },
+    RichText:      { category:"Typography", label:"Text Editor",glyph:"¶", canHaveChildren:false,
+                     defaultLayout:{},
+                     defaultStyle:{ fontSize:"16px", color:"#1a1a1a" },
+                     defaultContent:"<p>Write <strong>rich</strong> content here — <em>basic HTML</em> like bold, italic, and lists is supported.</p>" },
+    Link:          { category:"Typography", label:"Link",       glyph:"⇗", canHaveChildren:false,
+                     defaultLayout:{},
+                     defaultStyle:{ color:"#2563eb", fontSize:"15px", textDecoration:"underline" },
+                     defaultContent:"Learn more", defaultHref:"#" },
+
+    // -- Inputs --
+    Button:        { category:"Inputs", label:"Button",   glyph:"▢", canHaveChildren:false,
+                     defaultLayout:{ display:"inline-flex" },
+                     defaultStyle:{ background:"#2563eb", color:"#ffffff", padding:"10px 20px", borderRadius:"8px", fontSize:"14px" },
+                     defaultContent:"Button" },
+    Input:         { category:"Inputs", label:"Input",    glyph:"▯", canHaveChildren:false,
+                     defaultLayout:{},
+                     defaultStyle:{ padding:"10px 12px", borderRadius:"6px", fontSize:"14px", width:"220px" },
+                     defaultPlaceholder:"Enter text..." },
+    Textarea:      { category:"Inputs", label:"Textarea", glyph:"▥", canHaveChildren:false,
+                     defaultLayout:{},
+                     defaultStyle:{ padding:"10px 12px", borderRadius:"6px", fontSize:"14px", width:"260px", height:"90px" },
+                     defaultPlaceholder:"Enter a longer message..." },
+    Checkbox:      { category:"Inputs", label:"Checkbox", glyph:"☑", canHaveChildren:false,
+                     defaultLayout:{ display:"inline-flex", align:"center", gap:"6px" },
+                     defaultStyle:{ fontSize:"14px", color:"#1a1a1a" },
+                     defaultLabel:"Remember me" },
+    Radio:         { category:"Inputs", label:"Radio",    glyph:"◉", canHaveChildren:false,
+                     defaultLayout:{ display:"inline-flex", align:"center", gap:"6px" },
+                     defaultStyle:{ fontSize:"14px", color:"#1a1a1a" },
+                     defaultLabel:"Option A" },
+    Select:        { category:"Inputs", label:"Select",   glyph:"▾", canHaveChildren:false,
+                     defaultLayout:{},
+                     defaultStyle:{ padding:"10px 12px", borderRadius:"6px", fontSize:"14px", width:"220px" },
+                     defaultOptions:["Option 1","Option 2","Option 3"] },
+
+    // -- Media --
+    Image:          { category:"Media", label:"Image", glyph:"▨", canHaveChildren:false,
+                      defaultLayout:{},
+                      defaultStyle:{ width:"280px", height:"160px", borderRadius:"6px", objectFit:"cover" },
+                      defaultSrc:"https://placehold.co/280x160?text=Image" },
+    Video:          { category:"Media", label:"Video", glyph:"▶", canHaveChildren:false,
+                      defaultLayout:{},
+                      defaultStyle:{ width:"100%", height:"280px", borderRadius:"8px", background:"#0b1f33" },
+                      defaultVideoUrl:"" },
+    ImageBox:       { category:"Media", label:"Image Box", glyph:"▥", canHaveChildren:false,
+                      defaultLayout:{},
+                      defaultStyle:{ width:"260px", padding:"20px", background:"#ffffff", borderRadius:"10px", textAlign:"center" },
+                      defaultSrc:"https://placehold.co/260x150?text=Image", defaultHeading:"Feature name", defaultText:"A short description of this feature goes here." },
+    ImageGallery:   { category:"Media", label:"Image Gallery", glyph:"▦", canHaveChildren:false,
+                      defaultLayout:{},
+                      defaultStyle:{ width:"100%", display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:"10px" },
+                      defaultImages:["https://placehold.co/200x200?text=1","https://placehold.co/200x200?text=2","https://placehold.co/200x200?text=3"] },
+    ImageCarousel:  { category:"Media", label:"Image Carousel", glyph:"⇄", canHaveChildren:false,
+                      defaultLayout:{},
+                      defaultStyle:{ width:"100%", height:"280px", borderRadius:"8px" },
+                      defaultImages:["https://placehold.co/600x280?text=Slide+1","https://placehold.co/600x280?text=Slide+2","https://placehold.co/600x280?text=Slide+3"] },
+    GoogleMap:      { category:"Media", label:"Google Maps", glyph:"⚑", canHaveChildren:false,
+                      defaultLayout:{},
+                      defaultStyle:{ width:"100%", height:"280px", borderRadius:"8px" },
+                      defaultMapQuery:"Eiffel Tower, Paris" },
+    SoundCloud:     { category:"Media", label:"SoundCloud", glyph:"♪", canHaveChildren:false,
+                      defaultLayout:{},
+                      defaultStyle:{ width:"100%", height:"166px", borderRadius:"6px" },
+                      defaultTrackUrl:"" },
+
+    // -- Icons --
+    Icon:           { category:"Icons", label:"Icon", glyph:"★", canHaveChildren:false,
+                      defaultLayout:{},
+                      defaultStyle:{ fontSize:"36px", color:"#2563eb" },
+                      defaultIcon:"★" },
+    IconBox:        { category:"Icons", label:"Icon Box", glyph:"◈", canHaveChildren:false,
+                      defaultLayout:{},
+                      defaultStyle:{ width:"240px", padding:"20px", background:"#ffffff", borderRadius:"10px", textAlign:"center", color:"#2563eb" },
+                      defaultIcon:"★", defaultHeading:"Feature name", defaultText:"A short description of this feature goes here." },
+    SocialIcons:    { category:"Icons", label:"Social Icons", glyph:"◎", canHaveChildren:false,
+                      defaultLayout:{ display:"inline-flex", gap:"10px" },
+                      defaultStyle:{ fontSize:"14px" },
+                      defaultItems:["Twitter|https://twitter.com","Instagram|https://instagram.com","LinkedIn|https://linkedin.com"] },
+
+    // -- Data --
+    List:          { category:"Data", label:"Icon List", glyph:"≡", canHaveChildren:false,
+                     defaultLayout:{},
+                     defaultStyle:{ fontSize:"14px", color:"#1a1a1a" },
+                     defaultItems:["First item","Second item","Third item"], defaultIcon:"•" },
+
+    // -- Feedback --
+    Alert:          { category:"Feedback", label:"Alert", glyph:"▲", canHaveChildren:false,
+                      defaultLayout:{},
+                      defaultStyle:{ background:"#fef3c7", color:"#92400e", padding:"12px 16px", borderRadius:"8px", fontSize:"14px" },
+                      defaultContent:"This is an alert message." },
+    Badge:          { category:"Feedback", label:"Badge", glyph:"◆", canHaveChildren:false,
+                      defaultLayout:{ display:"inline-flex" },
+                      defaultStyle:{ background:"#2563eb", color:"#ffffff", padding:"4px 10px", borderRadius:"999px", fontSize:"12px" },
+                      defaultContent:"New" },
+    Avatar:         { category:"Feedback", label:"Avatar", glyph:"◐", canHaveChildren:false,
+                      defaultLayout:{ display:"inline-flex", align:"center", justify:"center" },
+                      defaultStyle:{ background:"#94a3b8", color:"#ffffff", width:"48px", height:"48px", borderRadius:"999px", fontSize:"16px" },
+                      defaultInitials:"AB" },
+    Testimonial:    { category:"Feedback", label:"Testimonial", glyph:"❞", canHaveChildren:false,
+                      defaultLayout:{},
+                      defaultStyle:{ width:"320px", padding:"20px", background:"#ffffff", borderRadius:"10px" },
+                      defaultContent:"\u201cThis product completely changed how our team works.\u201d", defaultHeading:"Jamie Chen", defaultText:"Product Lead, Acme Co.", defaultInitials:"JC" },
+    Rating:         { category:"Feedback", label:"Rating", glyph:"☆", canHaveChildren:false,
+                      defaultLayout:{},
+                      defaultStyle:{ fontSize:"22px", color:"#f59e0b" },
+                      defaultStars:4, defaultMaxStars:5, defaultIcon:"★" },
+    Counter:        { category:"Feedback", label:"Counter", glyph:"#", canHaveChildren:false,
+                      defaultLayout:{},
+                      defaultStyle:{ fontSize:"36px", color:"#0f172a", fontWeight:"700", textAlign:"center" },
+                      defaultEndValue:100, defaultCounterLabel:"Projects completed" },
+    ProgressBar:    { category:"Feedback", label:"Progress Bar", glyph:"▬", canHaveChildren:false,
+                      defaultLayout:{},
+                      defaultStyle:{ width:"100%", height:"10px", borderRadius:"999px", background:"#e2e8f0" },
+                      defaultPercent:65, defaultProgressLabel:"Skill" },
+
+    // -- Advanced --
+    HtmlEmbed:      { category:"Advanced", label:"HTML", glyph:"</>", canHaveChildren:false,
+                      defaultLayout:{},
+                      defaultStyle:{},
+                      defaultContent:"<!-- Paste custom HTML, or a script/embed snippet, here -->" }
+  };
+
+  var CATEGORY_ORDER = ["Layout", "Typography", "Inputs", "Media", "Icons", "Data", "Feedback", "Advanced"];
+
+  var HTML_TAG = {
+    Root:"div", Container:"div", FlexContainer:"div", Card:"div", Divider:"hr", Spacer:"div", Anchor:"div",
+    Tabs:"div", Accordion:"div",
+    Heading:"h2", Text:"p", RichText:"div", Link:"a",
+    Button:"button", Input:"input", Textarea:"textarea", Checkbox:"label", Radio:"label", Select:"select",
+    Image:"img", Video:"div", ImageBox:"div", ImageGallery:"div", ImageCarousel:"div", GoogleMap:"iframe", SoundCloud:"iframe",
+    Icon:"span", IconBox:"div", SocialIcons:"div",
+    List:"ul", Alert:"div", Badge:"span", Avatar:"div", Testimonial:"div", Rating:"div", Counter:"div", ProgressBar:"div",
+    HtmlEmbed:"div"
+  };
+
+  /* =========================================================
+     2. STATE + MODEL
+     ========================================================= */
+
+  var state = {
+    model: null,
+    selectedId: null,
+    history: [],
+    historyIndex: -1,
+    activeTab: "components",
+    activeView: "preview",
+    activeDevice: "desktop",
+    dragCreateType: null,
+    resizing: null
+  };
+
+  function uid(){ return "n_" + Math.random().toString(36).slice(2,9); }
+
+  // -- Responsive: desktop is the base/reference. Tablet and mobile are
+  // derived by auto-scaling px-based size properties proportionally to the
+  // canvas preview width, UNLESS the user has manually overridden a value
+  // for that breakpoint — manual overrides always win. This means switching
+  // device previews resizes everything automatically with zero extra work,
+  // while still allowing per-element fine-tuning per breakpoint. --
+
+  var DEVICE_REFERENCE_WIDTH = { desktop: 1180, tablet: 768, mobile: 375 };
+  var MEDIA_QUERY_MAX_WIDTH = { tablet: 900, mobile: 520 }; // real browser breakpoints for exported CSS
+  var SCALABLE_STYLE_PROPS = ["width", "height", "left", "top", "fontSize"];
+  var SCALABLE_LAYOUT_PROPS = ["gap"];
+
+  function scalePxValue(value, factor){
+    if (typeof value !== "string") return null;
+    var match = value.match(/^(-?\d+(?:\.\d+)?)px$/);
+    if (!match) return null; // only simple "Npx" values are auto-scaled; % / auto / calc() etc are left as-is
+    var scaled = Math.round(parseFloat(match[1]) * factor);
+    return scaled + "px";
+  }
+
+  function ensureResponsiveBucket(node, device){
+    if (!node.responsive) node.responsive = { tablet:{ style:{}, layout:{} }, mobile:{ style:{}, layout:{} } };
+    if (!node.responsive[device]) node.responsive[device] = { style:{}, layout:{} };
+    return node.responsive[device];
+  }
+
+  function getEffectiveStyle(node, device){
+    var eff = Object.assign({}, node.style);
+    if (device && device !== "desktop"){
+      var factor = DEVICE_REFERENCE_WIDTH[device] / DEVICE_REFERENCE_WIDTH.desktop;
+      SCALABLE_STYLE_PROPS.forEach(function(prop){
+        if (eff[prop] !== undefined){
+          var scaled = scalePxValue(eff[prop], factor);
+          if (scaled !== null) eff[prop] = scaled;
+        }
+      });
+      var overrides = (node.responsive && node.responsive[device] && node.responsive[device].style) || {};
+      Object.assign(eff, overrides);
+    }
+    return eff;
+  }
+
+  function getEffectiveLayout(node, device){
+    var eff = Object.assign({}, node.layout);
+    if (device && device !== "desktop"){
+      var factor = DEVICE_REFERENCE_WIDTH[device] / DEVICE_REFERENCE_WIDTH.desktop;
+      SCALABLE_LAYOUT_PROPS.forEach(function(prop){
+        if (eff[prop] !== undefined){
+          var scaled = scalePxValue(eff[prop], factor);
+          if (scaled !== null) eff[prop] = scaled;
+        }
+      });
+      var overrides = (node.responsive && node.responsive[device] && node.responsive[device].layout) || {};
+      Object.assign(eff, overrides);
+    }
+    return eff;
+  }
+
+  // Where a style/layout WRITE should land for the current device: the base
+  // node.style/node.layout for desktop, or that device's override bucket otherwise.
+  function getStyleWriteTarget(node, device){
+    return (device && device !== "desktop") ? ensureResponsiveBucket(node, device).style : node.style;
+  }
+  function getLayoutWriteTarget(node, device){
+    return (device && device !== "desktop") ? ensureResponsiveBucket(node, device).layout : node.layout;
+  }
+
+  function hasResponsiveOverrides(node, device){
+    var bucket = node.responsive && node.responsive[device];
+    if (!bucket) return false;
+    return Object.keys(bucket.style || {}).length > 0 || Object.keys(bucket.layout || {}).length > 0;
+  }
+
+  function clearResponsiveOverrides(node, device){
+    if (node.responsive && node.responsive[device]) node.responsive[device] = { style:{}, layout:{} };
+  }
+
+  function createNode(type){
+    var def = COMPONENT_DEFS[type];
+    var node = {
+      id: uid(),
+      type: type,
+      layout: JSON.parse(JSON.stringify(def.defaultLayout)),
+      style: JSON.parse(JSON.stringify(def.defaultStyle)),
+      responsive: { tablet: { style:{}, layout:{} }, mobile: { style:{}, layout:{} } },
+      meta: { locked:false, hidden:false }
+    };
+    if (def.canHaveChildren) node.children = [];
+    if (type === "Text" || type === "Button" || type === "Heading" || type === "Badge" || type === "Alert" || type === "RichText" || type === "HtmlEmbed" || type === "Testimonial") node.content = def.defaultContent;
+    if (type === "Link") { node.content = def.defaultContent; node.href = def.defaultHref; }
+    if (type === "Image") { node.src = def.defaultSrc; node.alt = "Image"; }
+    if (type === "Input") { node.placeholder = def.defaultPlaceholder; node.inputType = "text"; }
+    if (type === "Textarea") { node.placeholder = def.defaultPlaceholder; }
+    if (type === "Checkbox" || type === "Radio") { node.label = def.defaultLabel; node.checked = false; }
+    if (type === "Select") { node.options = def.defaultOptions.slice(); }
+    if (type === "List") { node.items = def.defaultItems.slice(); node.icon = def.defaultIcon; }
+    if (type === "Avatar") { node.initials = def.defaultInitials; }
+    if (type === "Video") { node.videoUrl = def.defaultVideoUrl; }
+    if (type === "ImageBox") { node.src = def.defaultSrc; node.alt = "Image"; node.heading = def.defaultHeading; node.text = def.defaultText; }
+    if (type === "ImageGallery" || type === "ImageCarousel") { node.images = def.defaultImages.slice(); }
+    if (type === "GoogleMap") { node.mapQuery = def.defaultMapQuery; }
+    if (type === "SoundCloud") { node.trackUrl = def.defaultTrackUrl; }
+    if (type === "Icon") { node.icon = def.defaultIcon; }
+    if (type === "IconBox") { node.icon = def.defaultIcon; node.heading = def.defaultHeading; node.text = def.defaultText; }
+    if (type === "SocialIcons") { node.items = def.defaultItems.slice(); }
+    if (type === "Testimonial") { node.heading = def.defaultHeading; node.text = def.defaultText; node.initials = def.defaultInitials; }
+    if (type === "Rating") { node.stars = def.defaultStars; node.maxStars = def.defaultMaxStars; node.icon = def.defaultIcon; }
+    if (type === "Counter") { node.endValue = def.defaultEndValue; node.counterLabel = def.defaultCounterLabel; }
+    if (type === "ProgressBar") { node.percent = def.defaultPercent; node.progressLabel = def.defaultProgressLabel; }
+    if (type === "Tabs" || type === "Accordion") { node.tabLabels = def.defaultTabLabels.slice(); }
+    if (type === "Anchor") { node.anchorId = def.defaultAnchorId; }
+    return node;
+  }
+
+  function defaultModel(){
+    var root = { id:"root", type:"Root", children:[], layout:{ display:"block" }, style:{ minHeight:"500px" }, responsive:{ tablet:{style:{},layout:{}}, mobile:{style:{},layout:{}} }, meta:{} };
+    var model = { version:1, rootId:"root", nodes:{ root: root } };
+
+    var hero = createNode("FlexContainer");
+    hero.layout.justify = "space-between"; hero.layout.align = "center";
+    hero.style.padding = "28px 32px";
+    var heading = createNode("Text");
+    heading.content = "Build your interface"; heading.style.fontSize = "22px"; heading.style.color = "#0f172a";
+    var cta = createNode("Button");
+    cta.content = "Get Started";
+
+    model.nodes[hero.id] = hero;
+    model.nodes[heading.id] = heading;
+    model.nodes[cta.id] = cta;
+    hero.children.push(heading.id, cta.id);
+    root.children.push(hero.id);
+
+    return model;
+  }
+
+  // -- Template library: shared helpers + starter layouts built from the component set --
+
+  function newEmptyModel(rootStyle){
+    var root = { id:"root", type:"Root", children:[], layout:{ display:"block" }, style: rootStyle || { minHeight:"500px" }, responsive:{ tablet:{style:{},layout:{}}, mobile:{style:{},layout:{}} }, meta:{} };
+    return { version:1, rootId:"root", nodes:{ root: root } };
+  }
+
+  function place(model, parentId, node){
+    model.nodes[node.id] = node;
+    model.nodes[parentId].children.push(node.id);
+    return node;
+  }
+
+  function buildLoginTemplate(){
+    var model = newEmptyModel();
+    var wrap = createNode("FlexContainer");
+    wrap.layout.direction = "column"; wrap.layout.align = "center"; wrap.layout.justify = "center";
+    wrap.style.padding = "60px 20px"; wrap.style.minHeight = "500px";
+    place(model, "root", wrap);
+
+    var card = createNode("Card");
+    card.style.width = "360px";
+    place(model, wrap.id, card);
+
+    var heading = createNode("Heading");
+    heading.content = "Welcome back"; heading.style.fontSize = "24px"; heading.style.margin = "0 0 6px 0";
+    place(model, card.id, heading);
+
+    var sub = createNode("Text");
+    sub.content = "Sign in to continue"; sub.style.color = "#64748b"; sub.style.fontSize = "14px"; sub.style.margin = "0 0 20px 0";
+    place(model, card.id, sub);
+
+    var emailInput = createNode("Input");
+    emailInput.placeholder = "Email address"; emailInput.style.width = "100%"; emailInput.style.margin = "0 0 10px 0";
+    place(model, card.id, emailInput);
+
+    var passInput = createNode("Input");
+    passInput.placeholder = "Password"; passInput.inputType = "password"; passInput.style.width = "100%"; passInput.style.margin = "0 0 14px 0";
+    place(model, card.id, passInput);
+
+    var row = createNode("FlexContainer");
+    row.layout.justify = "space-between"; row.layout.align = "center";
+    row.style.padding = "0"; row.style.minHeight = "unset"; row.style.margin = "0 0 20px 0";
+    place(model, card.id, row);
+
+    var remember = createNode("Checkbox");
+    remember.label = "Remember me";
+    place(model, row.id, remember);
+
+    var forgot = createNode("Link");
+    forgot.content = "Forgot password?"; forgot.style.fontSize = "13px";
+    place(model, row.id, forgot);
+
+    var submit = createNode("Button");
+    submit.content = "Sign in"; submit.style.width = "100%"; submit.layout.justify = "center";
+    place(model, card.id, submit);
+
+    return model;
+  }
+
+  function buildPricingTemplate(){
+    var model = newEmptyModel();
+    var wrap = createNode("FlexContainer");
+    wrap.layout.justify = "center"; wrap.layout.align = "center";
+    wrap.style.padding = "60px 20px"; wrap.style.minHeight = "500px";
+    place(model, "root", wrap);
+
+    var card = createNode("Card");
+    card.style.width = "300px";
+    place(model, wrap.id, card);
+
+    var badge = createNode("Badge");
+    badge.content = "Most Popular"; badge.style.margin = "0 0 12px 0";
+    place(model, card.id, badge);
+
+    var price = createNode("Heading");
+    price.content = "$29/mo"; price.style.fontSize = "32px"; price.style.margin = "0 0 6px 0";
+    place(model, card.id, price);
+
+    var desc = createNode("Text");
+    desc.content = "Everything you need to grow."; desc.style.color = "#64748b"; desc.style.fontSize = "14px"; desc.style.margin = "0 0 16px 0";
+    place(model, card.id, desc);
+
+    var divider = createNode("Divider");
+    divider.style.margin = "0 0 16px 0";
+    place(model, card.id, divider);
+
+    var features = createNode("List");
+    features.items = ["Unlimited projects", "Priority support", "Custom domains", "Team collaboration"];
+    features.style.margin = "0 0 20px 0";
+    place(model, card.id, features);
+
+    var cta = createNode("Button");
+    cta.content = "Choose plan"; cta.style.width = "100%"; cta.layout.justify = "center";
+    place(model, card.id, cta);
+
+    return model;
+  }
+
+  function buildContactTemplate(){
+    var model = newEmptyModel();
+    var wrap = createNode("FlexContainer");
+    wrap.layout.direction = "column"; wrap.layout.align = "center"; wrap.layout.justify = "center";
+    wrap.style.padding = "60px 20px"; wrap.style.minHeight = "500px";
+    place(model, "root", wrap);
+
+    var card = createNode("Card");
+    card.style.width = "400px";
+    place(model, wrap.id, card);
+
+    var heading = createNode("Heading");
+    heading.content = "Get in touch"; heading.style.margin = "0 0 16px 0";
+    place(model, card.id, heading);
+
+    var nameInput = createNode("Input");
+    nameInput.placeholder = "Your name"; nameInput.style.width = "100%"; nameInput.style.margin = "0 0 10px 0";
+    place(model, card.id, nameInput);
+
+    var emailInput = createNode("Input");
+    emailInput.placeholder = "Your email"; emailInput.style.width = "100%"; emailInput.style.margin = "0 0 10px 0";
+    place(model, card.id, emailInput);
+
+    var message = createNode("Textarea");
+    message.placeholder = "Your message"; message.style.width = "100%"; message.style.margin = "0 0 16px 0";
+    place(model, card.id, message);
+
+    var submit = createNode("Button");
+    submit.content = "Send message"; submit.style.width = "100%"; submit.layout.justify = "center";
+    place(model, card.id, submit);
+
+    return model;
+  }
+
+  function buildLinkInBioTemplate(){
+    var model = newEmptyModel();
+    var wrap = createNode("FlexContainer");
+    wrap.layout.direction = "column"; wrap.layout.align = "center"; wrap.layout.justify = "flex-start";
+    wrap.style.padding = "50px 20px"; wrap.style.minHeight = "500px"; wrap.style.background = "#f8fafc";
+    place(model, "root", wrap);
+
+    var avatar = createNode("Avatar");
+    avatar.initials = "JC"; avatar.style.width = "72px"; avatar.style.height = "72px"; avatar.style.fontSize = "22px"; avatar.style.margin = "0 0 14px 0";
+    place(model, wrap.id, avatar);
+
+    var name = createNode("Heading");
+    name.content = "Jamie Chen"; name.style.fontSize = "20px"; name.style.margin = "0 0 4px 0";
+    place(model, wrap.id, name);
+
+    var bio = createNode("Text");
+    bio.content = "Designer & maker. Building things worth sharing."; bio.style.color = "#64748b"; bio.style.fontSize = "14px"; bio.style.margin = "0 0 24px 0";
+    place(model, wrap.id, bio);
+
+    var linksWrap = createNode("FlexContainer");
+    linksWrap.layout.direction = "column"; linksWrap.layout.gap = "10px"; linksWrap.style.width = "280px"; linksWrap.style.padding = "0";
+    place(model, wrap.id, linksWrap);
+
+    ["My Portfolio", "Latest Project", "Book a Call"].forEach(function(label){
+      var linkBtn = createNode("Button");
+      linkBtn.content = label; linkBtn.style.width = "100%"; linkBtn.style.background = "#ffffff"; linkBtn.style.color = "#0f172a";
+      linkBtn.style.border = "1px solid #e2e8f0"; linkBtn.layout.justify = "center";
+      place(model, linksWrap.id, linkBtn);
+    });
+
+    var social = createNode("SocialIcons");
+    social.items = ["Twitter|https://twitter.com", "Instagram|https://instagram.com", "LinkedIn|https://linkedin.com"];
+    social.style.margin = "20px 0 0 0";
+    place(model, wrap.id, social);
+
+    return model;
+  }
+
+  var TEMPLATES = {
+    blank:      { label:"Blank",         glyph:"▭", description:"An empty canvas — start from scratch.", build: function(){ return newEmptyModel(); } },
+    landing:    { label:"Landing Hero",  glyph:"H", description:"Heading, subtext, and a call-to-action button.", build: defaultModel },
+    login:      { label:"Login Form",    glyph:"▯", description:"Email, password, remember me, and a sign-in button.", build: buildLoginTemplate },
+    pricing:    { label:"Pricing Card",  glyph:"◆", description:"Badge, price, feature list, and a call-to-action.", build: buildPricingTemplate },
+    contact:    { label:"Contact Form",  glyph:"✉", description:"Name, email, message, and a submit button.", build: buildContactTemplate },
+    linkInBio:  { label:"Link in Bio",   glyph:"◐", description:"Avatar, name, bio, stacked links, and social icons.", build: buildLinkInBioTemplate }
+  };
+
+  /* =========================================================
+     3. MUTATION HELPERS — the only functions allowed to touch model.nodes
+     ========================================================= */
+
+  function findParentId(model, nodeId){
+    for (var id in model.nodes){
+      var n = model.nodes[id];
+      if (n.children && n.children.indexOf(nodeId) !== -1) return id;
+    }
+    return null;
+  }
+
+  function isNodeOrDescendant(model, checkId, ofId){
+    if (checkId === ofId) return true;
+    var node = model.nodes[ofId];
+    if (!node || !node.children) return false;
+    for (var i=0;i<node.children.length;i++){
+      if (isNodeOrDescendant(model, checkId, node.children[i])) return true;
+    }
+    return false;
+  }
+
+  function insertNode(model, parentId, node, index){
+    model.nodes[node.id] = node;
+    var arr = model.nodes[parentId].children;
+    if (index == null || index > arr.length) index = arr.length;
+    arr.splice(index, 0, node.id);
+  }
+
+  function removeNode(model, nodeId){
+    if (nodeId === model.rootId) return;
+    var parentId = findParentId(model, nodeId);
+    if (parentId){
+      var arr = model.nodes[parentId].children;
+      var idx = arr.indexOf(nodeId);
+      if (idx !== -1) arr.splice(idx, 1);
+    }
+    (function deleteSubtree(id){
+      var node = model.nodes[id];
+      if (!node) return;
+      if (node.children) node.children.slice().forEach(deleteSubtree);
+      delete model.nodes[id];
+    })(nodeId);
+  }
+
+  function moveNode(model, nodeId, newParentId, index){
+    if (nodeId === model.rootId) return;
+    if (isNodeOrDescendant(model, nodeId, newParentId)) return; // can't drop into own subtree
+    var oldParentId = findParentId(model, nodeId);
+    if (oldParentId){
+      var arr = model.nodes[oldParentId].children;
+      var idx = arr.indexOf(nodeId);
+      if (idx !== -1){
+        arr.splice(idx, 1);
+        if (oldParentId === newParentId && idx < index) index--;
+      }
+    }
+    var targetArr = model.nodes[newParentId].children;
+    if (index == null || index > targetArr.length) index = targetArr.length;
+    targetArr.splice(index, 0, nodeId);
+  }
+
+  function duplicateNode(model, nodeId){
+    if (nodeId === model.rootId) return null;
+    var parentId = findParentId(model, nodeId);
+    if (!parentId) return null;
+    var idMap = {};
+    function cloneSubtree(id){
+      var src = model.nodes[id];
+      var clone = JSON.parse(JSON.stringify(src));
+      var newId = uid();
+      idMap[id] = newId;
+      clone.id = newId;
+      if (clone.children) clone.children = clone.children.map(cloneSubtree);
+      model.nodes[newId] = clone;
+      return newId;
+    }
+    var newRootId = cloneSubtree(nodeId);
+    var arr = model.nodes[parentId].children;
+    var idx = arr.indexOf(nodeId);
+    arr.splice(idx + 1, 0, newRootId);
+    return newRootId;
+  }
+
+  /* =========================================================
+     4. HISTORY (undo/redo)
+     ========================================================= */
+
+  function pushHistory(){
+    var snapshot = JSON.stringify(state.model);
+    state.history = state.history.slice(0, state.historyIndex + 1);
+    state.history.push(snapshot);
+    if (state.history.length > 60) state.history.shift();
+    state.historyIndex = state.history.length - 1;
+    updateHistoryButtons();
+  }
+
+  function undo(){
+    if (state.historyIndex <= 0) return;
+    state.historyIndex--;
+    state.model = JSON.parse(state.history[state.historyIndex]);
+    if (!state.model.nodes[state.selectedId]) state.selectedId = null;
+    renderAll();
+    scheduleAutosave();
+  }
+
+  function redo(){
+    if (state.historyIndex >= state.history.length - 1) return;
+    state.historyIndex++;
+    state.model = JSON.parse(state.history[state.historyIndex]);
+    if (!state.model.nodes[state.selectedId]) state.selectedId = null;
+    renderAll();
+    scheduleAutosave();
+  }
+
+  function updateHistoryButtons(){
+    document.getElementById("btn-undo").disabled = state.historyIndex <= 0;
+    document.getElementById("btn-redo").disabled = state.historyIndex >= state.history.length - 1;
+  }
+
+  /* =========================================================
+     5. STORAGE
+     ========================================================= */
+
+  var STORAGE_KEY = "uibuilder_project_v1";
+  var autosaveTimer = null;
+
+  function scheduleAutosave(){
+    clearTimeout(autosaveTimer);
+    autosaveTimer = setTimeout(function(){
+      try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state.model)); }
+      catch(e){ /* storage unavailable — fail silently, project still works this session */ }
+    }, 400);
+  }
+
+  function loadFromStorage(){
+    try {
+      var raw = localStorage.getItem(STORAGE_KEY);
+      if (!raw) return null;
+      var parsed = JSON.parse(raw);
+      if (parsed && parsed.rootId && parsed.nodes) return parsed;
+    } catch(e){}
+    return null;
+  }
+
+  /* =========================================================
+     6. RENDER — canvas
+     ========================================================= */
+
+  function applyNodeStyles(el, node, device){
+    var layout = getEffectiveLayout(node, device);
+    if (layout.display) el.style.display = layout.display;
+    if (layout.direction) el.style.flexDirection = layout.direction;
+    if (layout.justify) el.style.justifyContent = layout.justify;
+    if (layout.align) el.style.alignItems = layout.align;
+    if (layout.gap) el.style.gap = layout.gap;
+    var style = getEffectiveStyle(node, device);
+    for (var k in style){ el.style[k] = style[k]; }
+  }
+
+  var PLATFORM_GLYPHS = {
+    twitter:"X", x:"X", facebook:"f", instagram:"IG", linkedin:"in",
+    youtube:"▶", tiktok:"♪", github:"{}", email:"✉", pinterest:"P"
+  };
+
+  function getPlatformGlyph(platform){
+    var key = (platform || "").trim().toLowerCase();
+    return PLATFORM_GLYPHS[key] || "●";
+  }
+
+  function parseSocialItem(raw){
+    var parts = String(raw).split("|");
+    return { platform: (parts[0] || "").trim(), url: (parts[1] || "#").trim() };
+  }
+
+  function getVideoEmbed(url){
+    if (!url) return null;
+    var m;
+    if ((m = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([\w-]+)/))) return { kind:"iframe", url:"https://www.youtube.com/embed/" + m[1] };
+    if ((m = url.match(/vimeo\.com\/(\d+)/))) return { kind:"iframe", url:"https://player.vimeo.com/video/" + m[1] };
+    if ((m = url.match(/dailymotion\.com\/video\/([\w]+)/))) return { kind:"iframe", url:"https://www.dailymotion.com/embed/video/" + m[1] };
+    return { kind:"video", url: url };
+  }
+
+  function getGoogleMapEmbedUrl(query){
+    return "https://www.google.com/maps?q=" + encodeURIComponent(query || "") + "&output=embed";
+  }
+
+  function getSoundCloudEmbedUrl(trackUrl){
+    return "https://w.soundcloud.com/player/?url=" + encodeURIComponent(trackUrl || "");
+  }
+
+  function renderNode(node){
+    var el = document.createElement("div");
+    el.dataset.nodeId = node.id;
+    el.dataset.nodeType = node.type;
+    el.className = "canvas-node canvas-node--" + node.type.toLowerCase();
+    applyNodeStyles(el, node, state.activeDevice);
+
+    if (node.type === "Text" || node.type === "Heading" || node.type === "Link" || node.type === "Badge" || node.type === "Alert"){
+      el.textContent = node.content || "";
+    } else if (node.type === "RichText"){
+      el.innerHTML = node.content || "";
+    } else if (node.type === "Button"){
+      el.textContent = node.content || "";
+      el.classList.add("canvas-node--btnface");
+    } else if (node.type === "Image"){
+      var img = document.createElement("img");
+      img.src = node.src || ""; img.alt = node.alt || ""; img.draggable = false;
+      img.style.width = "100%"; img.style.height = "100%";
+      img.style.objectFit = (node.style && node.style.objectFit) || "cover";
+      img.style.borderRadius = (node.style && node.style.borderRadius) || "0";
+      img.style.pointerEvents = "none";
+      el.appendChild(img);
+    } else if (node.type === "Input" || node.type === "Textarea"){
+      el.classList.add("canvas-node--inputface");
+      el.textContent = node.placeholder || "";
+    } else if (node.type === "Select"){
+      el.classList.add("canvas-node--inputface");
+      var firstOption = (node.options && node.options[0]) || "Select...";
+      el.textContent = firstOption + "  ▾";
+    } else if (node.type === "Checkbox"){
+      el.textContent = "☐ " + (node.label || "");
+    } else if (node.type === "Radio"){
+      el.textContent = "○ " + (node.label || "");
+    } else if (node.type === "Avatar"){
+      el.textContent = node.initials || "";
+    } else if (node.type === "Divider" || node.type === "Anchor"){
+      if (node.type === "Anchor"){ el.classList.add("canvas-node--anchorface"); el.textContent = "⚓ #" + (node.anchorId || ""); }
+      // Divider: intentionally empty — a styled line, no content and not a drop target
+    } else if (node.type === "Spacer"){
+      el.classList.add("canvas-node--spacerface");
+    } else if (node.type === "List"){
+      var items = node.items || [];
+      var bullet = node.icon || "•";
+      items.forEach(function(item){
+        var line = document.createElement("div");
+        line.textContent = bullet + "  " + item;
+        line.style.padding = "3px 0";
+        line.style.pointerEvents = "none";
+        el.appendChild(line);
+      });
+      if (items.length === 0){ el.classList.add("is-empty"); el.dataset.emptyLabel = "List — no items"; }
+    } else if (node.type === "Video"){
+      el.classList.add("canvas-node--mediaface");
+      el.textContent = node.videoUrl ? ("▶  " + node.videoUrl) : "▶  Video — set a URL in the inspector";
+    } else if (node.type === "SoundCloud"){
+      el.classList.add("canvas-node--mediaface");
+      el.textContent = node.trackUrl ? ("♪  " + node.trackUrl) : "♪  SoundCloud — set a track URL";
+    } else if (node.type === "GoogleMap"){
+      el.classList.add("canvas-node--mediaface");
+      el.textContent = "⚑  Map: " + (node.mapQuery || "");
+    } else if (node.type === "HtmlEmbed"){
+      el.classList.add("canvas-node--mediaface");
+      el.textContent = "</>  Custom HTML/JS (visible in exported page)";
+    } else if (node.type === "ImageGallery"){
+      var galleryUrls = node.images || [];
+      galleryUrls.forEach(function(url){
+        var thumb = document.createElement("img");
+        thumb.src = url; thumb.draggable = false;
+        thumb.style.width = "100%"; thumb.style.height = "90px"; thumb.style.objectFit = "cover";
+        thumb.style.borderRadius = "4px"; thumb.style.pointerEvents = "none";
+        el.appendChild(thumb);
+      });
+    } else if (node.type === "ImageCarousel"){
+      el.classList.add("canvas-node--carouselface");
+      var slideUrl = (node.images && node.images[0]) || "";
+      if (slideUrl){
+        var slideImg = document.createElement("img");
+        slideImg.src = slideUrl; slideImg.draggable = false;
+        slideImg.style.width = "100%"; slideImg.style.height = "100%"; slideImg.style.objectFit = "cover"; slideImg.style.pointerEvents = "none";
+        el.appendChild(slideImg);
+      }
+      var prevBtn = document.createElement("span"); prevBtn.className = "carousel-proxy-arrow left"; prevBtn.textContent = "‹";
+      var nextBtn = document.createElement("span"); nextBtn.className = "carousel-proxy-arrow right"; nextBtn.textContent = "›";
+      var dots = document.createElement("span"); dots.className = "carousel-proxy-dots";
+      dots.textContent = (node.images || []).map(function(){ return "•"; }).join(" ");
+      el.appendChild(prevBtn); el.appendChild(nextBtn); el.appendChild(dots);
+    } else if (node.type === "Icon"){
+      el.textContent = node.icon || "★";
+    } else if (node.type === "IconBox"){
+      var ibIcon = document.createElement("div"); ibIcon.textContent = node.icon || "★"; ibIcon.style.fontSize = "32px"; ibIcon.style.pointerEvents = "none";
+      var ibHeading = document.createElement("div"); ibHeading.textContent = node.heading || ""; ibHeading.style.fontWeight = "700"; ibHeading.style.margin = "10px 0 4px"; ibHeading.style.color = "#0f172a"; ibHeading.style.pointerEvents = "none";
+      var ibText = document.createElement("div"); ibText.textContent = node.text || ""; ibText.style.fontSize = "13px"; ibText.style.color = "#64748b"; ibText.style.pointerEvents = "none";
+      el.appendChild(ibIcon); el.appendChild(ibHeading); el.appendChild(ibText);
+    } else if (node.type === "ImageBox"){
+      var boxImg = document.createElement("img");
+      boxImg.src = node.src || ""; boxImg.alt = node.alt || ""; boxImg.draggable = false;
+      boxImg.style.width = "100%"; boxImg.style.borderRadius = "6px"; boxImg.style.pointerEvents = "none";
+      var boxHeading = document.createElement("div"); boxHeading.textContent = node.heading || ""; boxHeading.style.fontWeight = "700"; boxHeading.style.margin = "10px 0 4px"; boxHeading.style.color = "#0f172a"; boxHeading.style.pointerEvents = "none";
+      var boxText = document.createElement("div"); boxText.textContent = node.text || ""; boxText.style.fontSize = "13px"; boxText.style.color = "#64748b"; boxText.style.pointerEvents = "none";
+      el.appendChild(boxImg); el.appendChild(boxHeading); el.appendChild(boxText);
+    } else if (node.type === "SocialIcons"){
+      (node.items || []).forEach(function(raw){
+        var parsed = parseSocialItem(raw);
+        var chip = document.createElement("span");
+        chip.textContent = getPlatformGlyph(parsed.platform);
+        chip.title = parsed.platform;
+        chip.style.display = "inline-flex"; chip.style.alignItems = "center"; chip.style.justifyContent = "center";
+        chip.style.width = "30px"; chip.style.height = "30px"; chip.style.borderRadius = "999px";
+        chip.style.background = "#0f172a"; chip.style.color = "#fff"; chip.style.fontSize = "12px"; chip.style.pointerEvents = "none";
+        el.appendChild(chip);
+      });
+    } else if (node.type === "Testimonial"){
+      var quote = document.createElement("div"); quote.textContent = node.content || ""; quote.style.fontStyle = "italic"; quote.style.color = "#1a1a1a"; quote.style.marginBottom = "14px"; quote.style.pointerEvents = "none";
+      var authorRow = document.createElement("div"); authorRow.style.display = "flex"; authorRow.style.alignItems = "center"; authorRow.style.gap = "10px"; authorRow.style.pointerEvents = "none";
+      var avatarCircle = document.createElement("div");
+      avatarCircle.textContent = node.initials || "";
+      avatarCircle.style.width = "36px"; avatarCircle.style.height = "36px"; avatarCircle.style.borderRadius = "999px";
+      avatarCircle.style.background = "#94a3b8"; avatarCircle.style.color = "#fff"; avatarCircle.style.display = "flex";
+      avatarCircle.style.alignItems = "center"; avatarCircle.style.justifyContent = "center"; avatarCircle.style.fontSize = "13px"; avatarCircle.style.flex = "0 0 auto";
+      var nameCol = document.createElement("div");
+      var nameLine = document.createElement("div"); nameLine.textContent = node.heading || ""; nameLine.style.fontWeight = "700"; nameLine.style.fontSize = "13px"; nameLine.style.color = "#0f172a";
+      var roleLine = document.createElement("div"); roleLine.textContent = node.text || ""; roleLine.style.fontSize = "12px"; roleLine.style.color = "#64748b";
+      nameCol.appendChild(nameLine); nameCol.appendChild(roleLine);
+      authorRow.appendChild(avatarCircle); authorRow.appendChild(nameCol);
+      el.appendChild(quote); el.appendChild(authorRow);
+    } else if (node.type === "Rating"){
+      var stars = node.stars || 0, maxStars = node.maxStars || 5, ratingIcon = node.icon || "★";
+      var starsStr = "";
+      for (var s=0; s<maxStars; s++) starsStr += (s < stars) ? ratingIcon : "☆";
+      el.textContent = starsStr;
+    } else if (node.type === "Counter"){
+      var counterVal = document.createElement("div"); counterVal.textContent = (node.endValue != null ? node.endValue : 0); counterVal.style.pointerEvents = "none";
+      var counterLbl = document.createElement("div"); counterLbl.textContent = node.counterLabel || ""; counterLbl.style.fontSize = "13px"; counterLbl.style.fontWeight = "400"; counterLbl.style.color = "#64748b"; counterLbl.style.marginTop = "4px"; counterLbl.style.pointerEvents = "none";
+      el.appendChild(counterVal); el.appendChild(counterLbl);
+    } else if (node.type === "ProgressBar"){
+      var track = document.createElement("div");
+      track.style.width = "100%"; track.style.height = "100%"; track.style.borderRadius = "999px"; track.style.background = "rgba(0,0,0,0.08)"; track.style.overflow = "hidden"; track.style.pointerEvents = "none";
+      var fill = document.createElement("div");
+      fill.style.width = (node.percent != null ? node.percent : 0) + "%"; fill.style.height = "100%"; fill.style.background = "#2563eb"; fill.style.borderRadius = "999px";
+      track.appendChild(fill);
+      el.appendChild(track);
+      if (node.progressLabel){
+        el.classList.add("has-progress-label");
+        el.dataset.progressLabel = node.progressLabel + " — " + (node.percent || 0) + "%";
+      }
+    } else if (node.type === "Tabs" || node.type === "Accordion"){
+      // Editor shows every panel/section stacked and labeled so you can design
+      // into any of them — the real show/hide (tab or collapse) interaction
+      // only runs in the exported page.
+      var kidsList = node.children || [];
+      var labels = node.tabLabels || [];
+      kidsList.forEach(function(cid, idx){
+        var child = state.model.nodes[cid];
+        if (!child) return;
+        var panelWrap = document.createElement("div");
+        panelWrap.className = "canvas-node--panel-wrap";
+        var labelEl = document.createElement("div");
+        labelEl.className = "canvas-node--panel-label";
+        labelEl.textContent = (node.type === "Tabs" ? "Tab: " : "Section: ") + (labels[idx] || ("Panel " + (idx + 1)));
+        panelWrap.appendChild(labelEl);
+        panelWrap.appendChild(renderNode(child));
+        el.appendChild(panelWrap);
+      });
+      if (kidsList.length === 0){
+        el.classList.add("is-empty");
+        el.dataset.emptyLabel = (node.type === "Tabs" ? "Tabs" : "Accordion") + " — drop a container here for each " + (node.type === "Tabs" ? "tab" : "section");
+      }
+    } else {
+      var kids = node.children || [];
+      for (var i=0;i<kids.length;i++){
+        var child2 = state.model.nodes[kids[i]];
+        if (child2) el.appendChild(renderNode(child2));
+      }
+      if (kids.length === 0){
+        el.classList.add("is-empty");
+        el.dataset.emptyLabel = (COMPONENT_DEFS[node.type] ? COMPONENT_DEFS[node.type].label : "Container") + " — drop here";
+      }
+    }
+
+    if (node.id === state.selectedId) el.classList.add("is-selected");
+    return el;
+  }
+
+  function renderCanvas(){
+    var root = state.model.nodes[state.model.rootId];
+    var container = document.getElementById("canvas-root");
+    container.innerHTML = "";
+    container.appendChild(renderNode(root));
+    positionSelectionOverlay();
+  }
+
+  function positionSelectionOverlay(){
+    var overlay = document.getElementById("selection-overlay");
+    if (!state.selectedId){ overlay.style.display = "none"; return; }
+    var targetEl = document.querySelector('#canvas-root [data-node-id="' + state.selectedId + '"]');
+    var frame = document.getElementById("canvas-frame");
+    if (!targetEl){ overlay.style.display = "none"; return; }
+    var tr = targetEl.getBoundingClientRect();
+    var fr = frame.getBoundingClientRect();
+    overlay.style.display = "block";
+    overlay.style.left = (tr.left - fr.left) + "px";
+    overlay.style.top = (tr.top - fr.top) + "px";
+    overlay.style.width = tr.width + "px";
+    overlay.style.height = tr.height + "px";
+    document.getElementById("sel-type-label").textContent =
+      (COMPONENT_DEFS[state.model.nodes[state.selectedId].type] || { label: "Root" }).label || "Root";
+    document.getElementById("resize-handle").style.display = state.selectedId === "root" ? "none" : "block";
+  }
+
+  /* =========================================================
+     7. RENDER — layers panel
+     ========================================================= */
+
+  function renderLayers(){
+    var tree = document.getElementById("layers-tree");
+    tree.innerHTML = "";
+    tree.appendChild(renderLayerRow(state.model.nodes[state.model.rootId], 0));
+  }
+
+  function renderLayerRow(node, depth){
+    var wrap = document.createElement("div");
+
+    var row = document.createElement("div");
+    row.className = "layer-row" + (node.id === state.selectedId ? " selected" : "");
+    row.dataset.nodeId = node.id;
+
+    var glyph = document.createElement("span");
+    glyph.className = "lg";
+    glyph.textContent = node.id === "root" ? "◆" : (COMPONENT_DEFS[node.type] ? COMPONENT_DEFS[node.type].glyph : "•");
+    row.appendChild(glyph);
+
+    var label = document.createElement("span");
+    label.className = "lt";
+    label.textContent = node.id === "root" ? "Page" : ((COMPONENT_DEFS[node.type] || {}).label || node.type) +
+      (node.content ? ": " + node.content.slice(0,18) : "");
+    row.appendChild(label);
+
+    if (node.id !== "root"){
+      var actions = document.createElement("span");
+      actions.className = "lactions";
+      var dup = document.createElement("button"); dup.textContent = "⧉"; dup.title = "Duplicate";
+      dup.addEventListener("click", function(e){ e.stopPropagation(); doDuplicate(node.id); });
+      var del = document.createElement("button"); del.textContent = "✕"; del.title = "Delete";
+      del.addEventListener("click", function(e){ e.stopPropagation(); doDelete(node.id); });
+      actions.appendChild(dup); actions.appendChild(del);
+      row.appendChild(actions);
+    }
+
+    row.addEventListener("click", function(e){ e.stopPropagation(); selectNode(node.id); });
+    wrap.appendChild(row);
+
+    if (node.children && node.children.length){
+      var childWrap = document.createElement("div");
+      childWrap.className = "layer-children";
+      node.children.forEach(function(cid){
+        var child = state.model.nodes[cid];
+        if (child) childWrap.appendChild(renderLayerRow(child, depth+1));
+      });
+      wrap.appendChild(childWrap);
+    }
+    return wrap;
+  }
+
+  /* =========================================================
+     8. RENDER — inspector
+     ========================================================= */
+
+  function fieldRow(labelText, innerHtml){
+    return '<div class="field"><label>' + labelText + '</label>' + innerHtml + '</div>';
+  }
+
+  function textField(labelText, fieldPath, value){
+    return fieldRow(labelText, '<input type="text" data-field="' + fieldPath + '" value="' + (value==null?"":String(value).replace(/"/g,'&quot;')) + '">');
+  }
+
+  function colorField(labelText, fieldPath, value){
+    var v = /^#[0-9a-fA-F]{3,6}$/.test(value) ? value : "#000000";
+    return fieldRow(labelText, '<input type="color" data-field="' + fieldPath + '" value="' + v + '">');
+  }
+
+  function textareaField(labelText, fieldPath, value){
+    return fieldRow(labelText, '<textarea data-field="' + fieldPath + '">' + (value==null?"":String(value)) + '</textarea>');
+  }
+
+  function segField(labelText, fieldPath, options, current){
+    var html = '<div class="seg" data-seg-field="' + fieldPath + '">';
+    options.forEach(function(opt){
+      html += '<button type="button" data-value="' + opt.value + '" class="' + (opt.value===current?"active":"") + '">' + opt.icon + '</button>';
+    });
+    html += '</div>';
+    return fieldRow(labelText, html);
+  }
+
+  function renderInspector(){
+    var body = document.getElementById("inspector-body");
+    if (!state.selectedId){
+      body.innerHTML = '<div class="empty-inspector">Select an element on the canvas<br>to edit its properties.</div>';
+      return;
+    }
+    var node = state.model.nodes[state.selectedId];
+    if (!node){ body.innerHTML = ''; return; }
+
+    var device = state.activeDevice;
+    var effStyle = getEffectiveStyle(node, device);
+    var effLayout = getEffectiveLayout(node, device);
+
+    var isRoot = node.id === "root";
+    var isFlex = effLayout && effLayout.display === "flex";
+    var html = '<div class="node-type-badge">' + (isRoot ? "Root / Page" : (COMPONENT_DEFS[node.type]||{}).label) + '</div>';
+
+    if (device !== "desktop"){
+      var deviceLabel = device === "tablet" ? "Tablet" : "Mobile";
+      html += '<div class="responsive-banner">Editing for <strong>' + deviceLabel + '</strong> — sizes auto-scale from Desktop unless overridden here.';
+      if (!isRoot && hasResponsiveOverrides(node, device)){
+        html += '<button type="button" id="btn-reset-responsive">Reset to Desktop</button>';
+      }
+      html += '</div>';
+    }
+
+    if (node.type === "Text" || node.type === "Button" || node.type === "Heading" || node.type === "Badge" || node.type === "Alert"){
+      html += textareaField("Content", "content", node.content);
+    }
+    if (node.type === "Link"){
+      html += textareaField("Content", "content", node.content);
+      html += textField("Link URL", "href", node.href);
+    }
+    if (node.type === "Image"){
+      html += textField("Image URL", "src", node.src);
+      html += textField("Alt text", "alt", node.alt);
+    }
+    if (node.type === "Input" || node.type === "Textarea"){
+      html += textField("Placeholder", "placeholder", node.placeholder);
+    }
+    if (node.type === "Checkbox" || node.type === "Radio"){
+      html += textField("Label", "label", node.label);
+    }
+    if (node.type === "Select"){
+      html += textareaField("Options (one per line)", "options", (node.options || []).join("\n"));
+    }
+    if (node.type === "List"){
+      html += textareaField("Items (one per line)", "items", (node.items || []).join("\n"));
+    }
+    if (node.type === "Avatar"){
+      html += textField("Initials", "initials", node.initials);
+    }
+    if (node.type === "RichText" || node.type === "HtmlEmbed"){
+      html += textareaField(node.type === "HtmlEmbed" ? "HTML / embed code" : "Content (basic HTML supported)", "content", node.content);
+    }
+    if (node.type === "Video"){
+      html += textField("Video URL (YouTube, Vimeo, Dailymotion, or a direct file)", "videoUrl", node.videoUrl);
+    }
+    if (node.type === "SoundCloud"){
+      html += textField("SoundCloud track URL", "trackUrl", node.trackUrl);
+    }
+    if (node.type === "GoogleMap"){
+      html += textField("Address or place to show", "mapQuery", node.mapQuery);
+    }
+    if (node.type === "ImageBox" || node.type === "IconBox"){
+      if (node.type === "ImageBox"){
+        html += textField("Image URL", "src", node.src);
+        html += textField("Alt text", "alt", node.alt);
+      } else {
+        html += textField("Icon (any character/emoji)", "icon", node.icon);
+      }
+      html += textField("Heading", "heading", node.heading);
+      html += textareaField("Text", "text", node.text);
+    }
+    if (node.type === "ImageGallery" || node.type === "ImageCarousel"){
+      html += textareaField("Image URLs (one per line)", "images", (node.images || []).join("\n"));
+    }
+    if (node.type === "Icon"){
+      html += textField("Icon (any character/emoji)", "icon", node.icon);
+    }
+    if (node.type === "SocialIcons"){
+      html += textareaField("One per line: platform|url", "items", (node.items || []).join("\n"));
+    }
+    if (node.type === "Testimonial"){
+      html += textareaField("Quote", "content", node.content);
+      html += textField("Name", "heading", node.heading);
+      html += textField("Role / company", "text", node.text);
+      html += textField("Initials", "initials", node.initials);
+    }
+    if (node.type === "Rating"){
+      html += textField("Stars filled", "stars", node.stars);
+      html += textField("Out of (max stars)", "maxStars", node.maxStars);
+      html += textField("Icon character", "icon", node.icon);
+    }
+    if (node.type === "Counter"){
+      html += textField("End value", "endValue", node.endValue);
+      html += textField("Label", "counterLabel", node.counterLabel);
+    }
+    if (node.type === "ProgressBar"){
+      html += textField("Percent (0-100)", "percent", node.percent);
+      html += textField("Label", "progressLabel", node.progressLabel);
+    }
+    if (node.type === "Tabs" || node.type === "Accordion"){
+      html += textareaField((node.type === "Tabs" ? "Tab" : "Section") + " labels (one per line, matched to child order)", "tabLabels", (node.tabLabels || []).join("\n"));
+    }
+    if (node.type === "Anchor"){
+      html += textField("Anchor ID (for linking to this spot)", "anchorId", node.anchorId);
+    }
+
+    html += '<h4>Layout</h4>';
+    if (!isRoot){
+      html += segField("Display", "layout.display", [
+        { value:"block", icon:"▭" }, { value:"flex", icon:"▤" }, { value:"inline-flex", icon:"▫" }
+      ], effLayout.display || "block");
+    }
+    if (isFlex){
+      html += segField("Direction", "layout.direction", [{value:"row",icon:"→"},{value:"column",icon:"↓"}], effLayout.direction || "row");
+      html += segField("Justify", "layout.justify", [
+        {value:"flex-start",icon:"⇤"},{value:"center",icon:"⇔"},{value:"flex-end",icon:"⇥"},{value:"space-between",icon:"⇹"}
+      ], effLayout.justify || "flex-start");
+      html += segField("Align", "layout.align", [
+        {value:"flex-start",icon:"⤒"},{value:"center",icon:"⇕"},{value:"flex-end",icon:"⤓"},{value:"stretch",icon:"⬍"}
+      ], effLayout.align || "stretch");
+      html += textField("Gap", "layout.gap", effLayout.gap);
+    }
+
+    html += '<h4>Size &amp; Spacing</h4>';
+    html += '<div class="field-row">' +
+      textField("Width", "style.width", effStyle.width) +
+      textField("Height", "style.height", effStyle.height) +
+    '</div>';
+    html += textField("Padding", "style.padding", effStyle.padding);
+    if (!isRoot) html += textField("Margin", "style.margin", effStyle.margin);
+
+    var hasTextColor = ["Text","Button","Heading","Link","Badge","Alert","Checkbox","Radio","Avatar","RichText","Icon","IconBox","Testimonial","Rating","Counter"].indexOf(node.type) !== -1;
+    html += '<h4>Appearance</h4>';
+    html += colorField("Background", "style.background", effStyle.background || "#ffffff");
+    if (hasTextColor){
+      html += colorField("Text color", "style.color", effStyle.color || "#000000");
+      html += textField("Font size", "style.fontSize", effStyle.fontSize);
+    }
+    html += textField("Border radius", "style.borderRadius", effStyle.borderRadius);
+    if (!isRoot) html += textField("Opacity (0-1)", "style.opacity", effStyle.opacity);
+
+    if (!isRoot){
+      html += '<button class="danger-btn" id="btn-delete-selected">Delete element</button>';
+    }
+
+    body.innerHTML = html;
+  }
+
+  /* =========================================================
+     9. INSPECTOR EVENT WIRING (delegated)
+     ========================================================= */
+
+  var ARRAY_FIELDS = ["options", "items", "images", "tabLabels"];
+  var NUMERIC_FIELDS = ["stars", "maxStars", "endValue", "percent"];
+
+  function applyFieldValue(node, fieldPath, value, device){
+    if (fieldPath.indexOf("style.") === 0){
+      var styleTarget = getStyleWriteTarget(node, device);
+      var styleKey = fieldPath.slice(6);
+      if (device !== "desktop" && value === ""){ delete styleTarget[styleKey]; } else { styleTarget[styleKey] = value; }
+    } else if (fieldPath.indexOf("layout.") === 0){
+      var layoutTarget = getLayoutWriteTarget(node, device);
+      var layoutKey = fieldPath.slice(7);
+      if (value === "") delete layoutTarget[layoutKey]; else layoutTarget[layoutKey] = value;
+    } else if (ARRAY_FIELDS.indexOf(fieldPath) !== -1){
+      // content-like fields are shared across breakpoints, not per-device
+      node[fieldPath] = value.split("\n").map(function(s){ return s.trim(); }).filter(function(s){ return s.length > 0; });
+    } else if (NUMERIC_FIELDS.indexOf(fieldPath) !== -1){
+      node[fieldPath] = Number(value) || 0;
+    } else {
+      node[fieldPath] = value;
+    }
+  }
+
+  document.getElementById("inspector-body").addEventListener("input", function(e){
+    var el = e.target.closest("[data-field]");
+    if (!el) return;
+    var node = state.model.nodes[state.selectedId];
+    if (!node) return;
+    applyFieldValue(node, el.dataset.field, el.value, state.activeDevice);
+    renderCanvas(); renderLayers(); scheduleAutosave(); refreshCodeViewIfActive();
+  });
+
+  document.getElementById("inspector-body").addEventListener("change", function(e){
+    var el = e.target.closest("[data-field]");
+    if (!el) return;
+    pushHistory();
+  });
+
+  document.getElementById("inspector-body").addEventListener("click", function(e){
+    var seg = e.target.closest(".seg button");
+    if (seg){
+      var group = seg.closest("[data-seg-field]");
+      var node = state.model.nodes[state.selectedId];
+      if (!node) return;
+      applyFieldValue(node, group.dataset.segField, seg.dataset.value, state.activeDevice);
+      pushHistory();
+      renderAll();
+      refreshCodeViewIfActive();
+      return;
+    }
+    if (e.target.id === "btn-delete-selected"){
+      doDelete(state.selectedId);
+      return;
+    }
+    if (e.target.id === "btn-reset-responsive"){
+      var resetNode = state.model.nodes[state.selectedId];
+      if (resetNode){
+        clearResponsiveOverrides(resetNode, state.activeDevice);
+        pushHistory();
+        renderAll();
+        scheduleAutosave();
+        refreshCodeViewIfActive();
+        showToast((state.activeDevice === "tablet" ? "Tablet" : "Mobile") + " overrides cleared");
+      }
+    }
+  });
+
+  /* =========================================================
+     10. SELECTION
+     ========================================================= */
+
+  function selectNode(id){
+    state.selectedId = id;
+    renderCanvas();
+    renderLayers();
+    renderInspector();
+  }
+
+  document.getElementById("canvas-root").addEventListener("click", function(e){
+    var target = e.target.closest("[data-node-id]");
+    if (!target) return;
+    e.stopPropagation();
+    selectNode(target.dataset.nodeId);
+  });
+
+  document.getElementById("canvas-viewport").addEventListener("click", function(e){
+    if (e.target.id === "canvas-viewport"){
+      state.selectedId = null;
+      renderCanvas(); renderLayers(); renderInspector();
+    }
+  });
+
+  document.getElementById("sel-delete").addEventListener("click", function(){ doDelete(state.selectedId); });
+  document.getElementById("sel-duplicate").addEventListener("click", function(){ doDuplicate(state.selectedId); });
+
+  function doDelete(id){
+    if (!id || id === "root") return;
+    removeNode(state.model, id);
+    if (state.selectedId === id) state.selectedId = null;
+    pushHistory();
+    renderAll();
+    scheduleAutosave();
+    refreshCodeViewIfActive();
+  }
+
+  function doDuplicate(id){
+    if (!id || id === "root") return;
+    var newId = duplicateNode(state.model, id);
+    if (newId){ state.selectedId = newId; pushHistory(); renderAll(); scheduleAutosave(); refreshCodeViewIfActive(); }
+  }
+
+  /* =========================================================
+     11. DRAG FROM PALETTE (create) + FREE-POSITION DRAG ON CANVAS (move)
+     ========================================================= */
+
+  // Finds the nearest container element under the cursor. Pass excludeId
+  // when dragging an existing node so it can't be dropped into itself or
+  // one of its own descendants.
+  function getContainerElAt(clientX, clientY, excludeId){
+    var els = document.elementsFromPoint(clientX, clientY);
+    for (var i=0;i<els.length;i++){
+      var el = els[i];
+      if (el.dataset && el.dataset.nodeId){
+        var node = state.model.nodes[el.dataset.nodeId];
+        if (node && (node.children !== undefined)){
+          if (excludeId && isNodeOrDescendant(state.model, el.dataset.nodeId, excludeId)) continue;
+          return el;
+        }
+      }
+    }
+    return document.getElementById("canvas-root").firstElementChild; // fallback: root
+  }
+
+  function clearDropHighlights(){
+    var els = document.querySelectorAll(".drop-target");
+    els.forEach(function(el){ el.classList.remove("drop-target"); });
+  }
+
+  // -- palette items: dragstart (creating a brand new element) --
+  function buildPalette(){
+    var palette = document.getElementById("palette");
+    palette.innerHTML = "";
+
+    CATEGORY_ORDER.forEach(function(category){
+      var typesInCategory = Object.keys(COMPONENT_DEFS).filter(function(t){
+        return COMPONENT_DEFS[t].category === category;
+      });
+      if (!typesInCategory.length) return;
+
+      var heading = document.createElement("h4");
+      heading.textContent = category;
+      heading.className = "palette-category";
+      palette.appendChild(heading);
+
+      var grid = document.createElement("div");
+      grid.className = "palette-grid";
+      typesInCategory.forEach(function(type){
+        var def = COMPONENT_DEFS[type];
+        var item = document.createElement("div");
+        item.className = "palette-item";
+        item.draggable = true;
+        item.title = def.label;
+        item.innerHTML = '<span class="glyph">' + def.glyph + '</span><span>' + def.label + '</span>';
+        item.addEventListener("dragstart", function(e){
+          state.dragCreateType = type;
+          e.dataTransfer.effectAllowed = "copy";
+          e.dataTransfer.setData("text/plain", type);
+        });
+        grid.appendChild(item);
+      });
+      palette.appendChild(grid);
+    });
+  }
+
+  var canvasRootEl = document.getElementById("canvas-root");
+
+  canvasRootEl.addEventListener("dragover", function(e){
+    if (!state.dragCreateType) return;
+    e.preventDefault();
+    var containerEl = getContainerElAt(e.clientX, e.clientY);
+    clearDropHighlights();
+    if (containerEl) containerEl.classList.add("drop-target");
+  });
+
+  // Dropping a NEW component from the palette places it at the exact
+  // cursor position (absolute, freeform) rather than inserting it into
+  // document flow — this is what lets it land wherever you drop it.
+  canvasRootEl.addEventListener("drop", function(e){
+    e.preventDefault();
+    clearDropHighlights();
+    if (!state.dragCreateType) return;
+    var containerEl = getContainerElAt(e.clientX, e.clientY);
+    if (!containerEl) return;
+    var containerId = containerEl.dataset.nodeId;
+    var containerRect = containerEl.getBoundingClientRect();
+
+    var node = createNode(state.dragCreateType);
+    node.style.position = "absolute";
+    node.style.left = Math.max(0, Math.round(e.clientX - containerRect.left - 10)) + "px";
+    node.style.top = Math.max(0, Math.round(e.clientY - containerRect.top - 10)) + "px";
+
+    insertNode(state.model, containerId, node);
+    state.selectedId = node.id;
+    state.dragCreateType = null;
+    pushHistory(); renderAll(); scheduleAutosave(); refreshCodeViewIfActive();
+  });
+
+  document.addEventListener("dragend", function(){
+    state.dragCreateType = null;
+    clearDropHighlights();
+  });
+
+  // -- moving EXISTING canvas elements: free positioning anywhere in the canvas --
+  // Implemented with plain mouse events (not the HTML5 drag API) so the
+  // element can follow the cursor continuously and land at any x/y —
+  // not just snap into flow order.
+  var moveDrag = null;
+  var MOVE_THRESHOLD = 4; // px of movement before a mousedown counts as a drag rather than a click
+
+  canvasRootEl.addEventListener("mousedown", function(e){
+    var target = e.target.closest("[data-node-id]");
+    if (!target || target.dataset.nodeId === "root") return;
+    var nodeId = target.dataset.nodeId;
+    var node = state.model.nodes[nodeId];
+    if (!node || (node.meta && node.meta.locked)) return;
+
+    var parentId = findParentId(state.model, nodeId) || state.model.rootId;
+    var parentEl = document.querySelector('#canvas-root [data-node-id="' + parentId + '"]');
+    if (!parentEl) return;
+
+    var elRect = target.getBoundingClientRect();
+    var parentRect = parentEl.getBoundingClientRect();
+
+    moveDrag = {
+      id: nodeId,
+      parentId: parentId,
+      hoverContainerId: parentId,
+      startClientX: e.clientX,
+      startClientY: e.clientY,
+      offsetX: e.clientX - elRect.left,
+      offsetY: e.clientY - elRect.top,
+      originLeft: elRect.left - parentRect.left,
+      originTop: elRect.top - parentRect.top,
+      moved: false
+    };
+
+    document.addEventListener("mousemove", onCanvasMoveDrag);
+    document.addEventListener("mouseup", onCanvasMoveDrop);
+  });
+
+  function onCanvasMoveDrag(e){
+    if (!moveDrag) return;
+    var dx = e.clientX - moveDrag.startClientX;
+    var dy = e.clientY - moveDrag.startClientY;
+
+    if (!moveDrag.moved){
+      if (Math.abs(dx) < MOVE_THRESHOLD && Math.abs(dy) < MOVE_THRESHOLD) return;
+      moveDrag.moved = true;
+      document.body.style.cursor = "grabbing";
+    }
+
+    var node = state.model.nodes[moveDrag.id];
+    if (!node) return;
+
+    // Reposition relative to the ORIGINAL parent while dragging — this keeps
+    // the motion smooth and 1:1 with the cursor even while hovering over
+    // other containers. Reparenting (if any) is resolved once, on drop.
+    // Writes land on the base (desktop) style, or on the current device's
+    // override bucket if previewing tablet/mobile — so dragging an element
+    // while in Tablet view only repositions it for that breakpoint.
+    var moveTarget = getStyleWriteTarget(node, state.activeDevice);
+    moveTarget.position = "absolute";
+    moveTarget.left = Math.round(moveDrag.originLeft + dx) + "px";
+    moveTarget.top = Math.round(moveDrag.originTop + dy) + "px";
+    renderCanvas();
+
+    clearDropHighlights();
+    var hoverEl = getContainerElAt(e.clientX, e.clientY, moveDrag.id);
+    if (hoverEl){
+      hoverEl.classList.add("drop-target");
+      moveDrag.hoverContainerId = hoverEl.dataset.nodeId;
+    }
+  }
+
+  function onCanvasMoveDrop(e){
+    document.removeEventListener("mousemove", onCanvasMoveDrag);
+    document.removeEventListener("mouseup", onCanvasMoveDrop);
+    document.body.style.cursor = "";
+    clearDropHighlights();
+    if (!moveDrag) return;
+
+    var wasMoved = moveDrag.moved;
+    var nodeId = moveDrag.id;
+    var originalParentId = moveDrag.parentId;
+    var finalContainerId = moveDrag.hoverContainerId || originalParentId;
+
+    if (wasMoved){
+      var node = state.model.nodes[nodeId];
+      if (node && finalContainerId !== originalParentId){
+        // Dropped over a different container — reparent, then recompute
+        // left/top relative to that container's own coordinate frame.
+        var newParentEl = document.querySelector('#canvas-root [data-node-id="' + finalContainerId + '"]');
+        if (newParentEl){
+          var newParentRect = newParentEl.getBoundingClientRect();
+          var reparentTarget = getStyleWriteTarget(node, state.activeDevice);
+          reparentTarget.left = Math.max(0, Math.round(e.clientX - newParentRect.left - moveDrag.offsetX)) + "px";
+          reparentTarget.top = Math.max(0, Math.round(e.clientY - newParentRect.top - moveDrag.offsetY)) + "px";
+        }
+        moveNode(state.model, nodeId, finalContainerId);
+      }
+      state.selectedId = nodeId;
+      pushHistory();
+      renderAll();
+      scheduleAutosave();
+      refreshCodeViewIfActive();
+    } else {
+      // No real movement — treat it as a plain click-to-select.
+      selectNode(nodeId);
+    }
+    moveDrag = null;
+  }
+
+  /* =========================================================
+     12. RESIZE HANDLE
+     ========================================================= */
+
+  document.getElementById("resize-handle").addEventListener("mousedown", function(e){
+    e.preventDefault(); e.stopPropagation();
+    var targetEl = document.querySelector('#canvas-root [data-node-id="' + state.selectedId + '"]');
+    if (!targetEl) return;
+    var startRect = targetEl.getBoundingClientRect();
+    state.resizing = { id: state.selectedId, startX: e.clientX, startY: e.clientY, startW: startRect.width, startH: startRect.height };
+
+    function onMove(ev){
+      if (!state.resizing) return;
+      var dx = ev.clientX - state.resizing.startX;
+      var dy = ev.clientY - state.resizing.startY;
+      var node = state.model.nodes[state.resizing.id];
+      if (!node) return;
+      var resizeTarget = getStyleWriteTarget(node, state.activeDevice);
+      resizeTarget.width = Math.max(20, Math.round(state.resizing.startW + dx)) + "px";
+      resizeTarget.height = Math.max(20, Math.round(state.resizing.startH + dy)) + "px";
+      renderCanvas();
+    }
+    function onUp(){
+      document.removeEventListener("mousemove", onMove);
+      document.removeEventListener("mouseup", onUp);
+      if (state.resizing){ state.resizing = null; pushHistory(); renderInspector(); scheduleAutosave(); refreshCodeViewIfActive(); }
+    }
+    document.addEventListener("mousemove", onMove);
+    document.addEventListener("mouseup", onUp);
+  });
+
+  window.addEventListener("resize", positionSelectionOverlay);
+  document.getElementById("canvas-viewport").addEventListener("scroll", positionSelectionOverlay);
+
+  /* =========================================================
+     13. CODE GENERATION
+     ========================================================= */
+
+  function camelToKebab(s){ return s.replace(/[A-Z]/g, function(m){ return "-" + m.toLowerCase(); }); }
+
+  function escapeHtml(s){
+    return String(s == null ? "" : s)
+      .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+  }
+
+  function computeNodeProps(node, device){
+    var props = {};
+    var layout = getEffectiveLayout(node, device);
+    if (layout.display) props.display = layout.display;
+    if (layout.direction) props["flex-direction"] = layout.direction;
+    if (layout.justify) props["justify-content"] = layout.justify;
+    if (layout.align) props["align-items"] = layout.align;
+    if (layout.gap) props.gap = layout.gap;
+    var style = getEffectiveStyle(node, device);
+    for (var k in style){ props[camelToKebab(k)] = style[k]; }
+    // Any container holding a freely-positioned (absolute) child needs to be
+    // a positioning context itself, or that child would place itself relative
+    // to the page instead of relative to its actual parent.
+    if (node.children && !props.position){
+      var hasAbsoluteChild = node.children.some(function(cid){
+        var c = state.model.nodes[cid];
+        return c && getEffectiveStyle(c, device).position === "absolute";
+      });
+      if (hasAbsoluteChild) props.position = "relative";
+    }
+    return props;
+  }
+
+  function nodeCssRules(node){
+    var props = computeNodeProps(node, "desktop");
+    var decls = Object.keys(props).map(function(p){ return "  " + p + ": " + props[p] + ";"; }).join("\n");
+    if (!decls) return "";
+    return "." + "el-" + node.id + " {\n" + decls + "\n}\n";
+  }
+
+  // Only emits the properties that actually DIFFER from the desktop base —
+  // this is what makes switching device previews (and the exported CSS)
+  // reflect real auto-scaled or manually-overridden values, without
+  // redeclaring every property at every breakpoint.
+  function nodeResponsiveCssRules(node, device){
+    var baseProps = computeNodeProps(node, "desktop");
+    var devProps = computeNodeProps(node, device);
+    var diff = {};
+    Object.keys(devProps).forEach(function(k){
+      if (devProps[k] !== baseProps[k]) diff[k] = devProps[k];
+    });
+    var decls = Object.keys(diff).map(function(p){ return "    " + p + ": " + diff[p] + ";"; }).join("\n");
+    if (!decls) return "";
+    return "  .el-" + node.id + " {\n" + decls + "\n  }\n";
+  }
+
+  function nodeHtml(node, indent){
+    var pad = new Array(indent + 1).join("  ");
+    var cls = node.id === state.model.rootId ? "page" : "el-" + node.id;
+    var tag = HTML_TAG[node.type] || "div";
+
+    if (node.type === "Image"){
+      return pad + '<img class="' + cls + '" src="' + escapeHtml(node.src) + '" alt="' + escapeHtml(node.alt) + '">\n';
+    }
+    if (node.type === "Input"){
+      return pad + '<input class="' + cls + '" type="' + escapeHtml(node.inputType || "text") + '" placeholder="' + escapeHtml(node.placeholder) + '">\n';
+    }
+    if (node.type === "Textarea"){
+      return pad + '<textarea class="' + cls + '" placeholder="' + escapeHtml(node.placeholder) + '"></textarea>\n';
+    }
+    if (node.type === "Text" || node.type === "Heading" || node.type === "Badge" || node.type === "Alert"){
+      return pad + '<' + tag + ' class="' + cls + '">' + escapeHtml(node.content) + '</' + tag + '>\n';
+    }
+    if (node.type === "RichText" || node.type === "HtmlEmbed"){
+      // Raw HTML by design — this is the "insert your own code" escape hatch, not user-generated content to sanitize.
+      return pad + '<div class="' + cls + '">' + (node.content || "") + '</div>\n';
+    }
+    if (node.type === "Link"){
+      return pad + '<a class="' + cls + '" href="' + escapeHtml(node.href || "#") + '">' + escapeHtml(node.content) + '</a>\n';
+    }
+    if (node.type === "Button"){
+      return pad + '<button class="' + cls + '" type="button">' + escapeHtml(node.content) + '</button>\n';
+    }
+    if (node.type === "Divider"){
+      return pad + '<hr class="' + cls + '">\n';
+    }
+    if (node.type === "Spacer"){
+      return pad + '<div class="' + cls + '"></div>\n';
+    }
+    if (node.type === "Anchor"){
+      return pad + '<div id="' + escapeHtml(node.anchorId || "") + '" class="' + cls + '"></div>\n';
+    }
+    if (node.type === "Checkbox" || node.type === "Radio"){
+      var inputType = node.type === "Checkbox" ? "checkbox" : "radio";
+      return pad + '<label class="' + cls + '"><input type="' + inputType + '"> ' + escapeHtml(node.label) + '</label>\n';
+    }
+    if (node.type === "Select"){
+      var optHtml = (node.options || []).map(function(opt){ return '<option>' + escapeHtml(opt) + '</option>'; }).join("");
+      return pad + '<select class="' + cls + '">' + optHtml + '</select>\n';
+    }
+    if (node.type === "List"){
+      var bulletIcon = node.icon || "•";
+      var liHtml = (node.items || []).map(function(item){ return '<li>' + escapeHtml(bulletIcon) + '  ' + escapeHtml(item) + '</li>'; }).join("");
+      return pad + '<ul class="' + cls + '" style="list-style:none;padding-left:0;margin:0;">' + liHtml + '</ul>\n';
+    }
+    if (node.type === "Avatar"){
+      return pad + '<div class="' + cls + '">' + escapeHtml(node.initials) + '</div>\n';
+    }
+    if (node.type === "Icon"){
+      return pad + '<span class="' + cls + '">' + escapeHtml(node.icon || "★") + '</span>\n';
+    }
+    if (node.type === "IconBox"){
+      return pad + '<div class="' + cls + '">' +
+        '<div class="ui-iconbox-icon">' + escapeHtml(node.icon || "★") + '</div>' +
+        '<h3 class="ui-iconbox-heading">' + escapeHtml(node.heading) + '</h3>' +
+        '<p class="ui-iconbox-text">' + escapeHtml(node.text) + '</p></div>\n';
+    }
+    if (node.type === "ImageBox"){
+      return pad + '<div class="' + cls + '">' +
+        '<img class="ui-imagebox-img" src="' + escapeHtml(node.src) + '" alt="' + escapeHtml(node.alt) + '">' +
+        '<h3 class="ui-imagebox-heading">' + escapeHtml(node.heading) + '</h3>' +
+        '<p class="ui-imagebox-text">' + escapeHtml(node.text) + '</p></div>\n';
+    }
+    if (node.type === "Testimonial"){
+      return pad + '<div class="' + cls + '">' +
+        '<p class="ui-testimonial-quote">' + escapeHtml(node.content) + '</p>' +
+        '<div class="ui-testimonial-author"><div class="ui-testimonial-avatar">' + escapeHtml(node.initials) + '</div>' +
+        '<div><div class="ui-testimonial-name">' + escapeHtml(node.heading) + '</div>' +
+        '<div class="ui-testimonial-role">' + escapeHtml(node.text) + '</div></div></div></div>\n';
+    }
+    if (node.type === "Rating"){
+      var rStars = node.stars || 0, rMax = node.maxStars || 5, rIcon = node.icon || "★";
+      var rStr = "";
+      for (var ri=0; ri<rMax; ri++) rStr += (ri < rStars) ? escapeHtml(rIcon) : "☆";
+      return pad + '<div class="' + cls + '">' + rStr + '</div>\n';
+    }
+    if (node.type === "Counter"){
+      return pad + '<div class="' + cls + ' ui-counter" data-end="' + (node.endValue || 0) + '">' +
+        '<div class="ui-counter-value">0</div>' +
+        '<div class="ui-counter-label">' + escapeHtml(node.counterLabel) + '</div></div>\n';
+    }
+    if (node.type === "ProgressBar"){
+      return pad + '<div class="' + cls + '">' +
+        (node.progressLabel ? '<div class="ui-progress-label">' + escapeHtml(node.progressLabel) + ' — ' + (node.percent || 0) + '%</div>' : '') +
+        '<div class="ui-progress-track"><div class="ui-progress-fill" style="width:' + (node.percent || 0) + '%;"></div></div></div>\n';
+    }
+    if (node.type === "Video"){
+      var embed = getVideoEmbed(node.videoUrl);
+      if (!embed) return pad + '<div class="' + cls + '"></div>\n';
+      if (embed.kind === "iframe") return pad + '<iframe class="' + cls + '" src="' + escapeHtml(embed.url) + '" frameborder="0" allow="autoplay; fullscreen; picture-in-picture" allowfullscreen></iframe>\n';
+      return pad + '<video class="' + cls + '" src="' + escapeHtml(embed.url) + '" controls></video>\n';
+    }
+    if (node.type === "SoundCloud"){
+      return pad + '<iframe class="' + cls + '" src="' + escapeHtml(getSoundCloudEmbedUrl(node.trackUrl)) + '" frameborder="0" allow="autoplay"></iframe>\n';
+    }
+    if (node.type === "GoogleMap"){
+      return pad + '<iframe class="' + cls + '" src="' + escapeHtml(getGoogleMapEmbedUrl(node.mapQuery)) + '" frameborder="0" loading="lazy"></iframe>\n';
+    }
+    if (node.type === "ImageGallery"){
+      var galleryHtml = (node.images || []).map(function(url){ return '<img src="' + escapeHtml(url) + '">'; }).join("");
+      return pad + '<div class="' + cls + '">' + galleryHtml + '</div>\n';
+    }
+    if (node.type === "ImageCarousel"){
+      var slides = (node.images || []).map(function(url){ return '<img src="' + escapeHtml(url) + '">'; }).join("");
+      var dotsHtml = (node.images || []).map(function(_, i){ return '<button type="button" data-index="' + i + '"></button>'; }).join("");
+      return pad + '<div class="' + cls + ' ui-carousel">' +
+        '<div class="ui-carousel-track">' + slides + '</div>' +
+        '<button type="button" class="ui-carousel-prev">‹</button>' +
+        '<button type="button" class="ui-carousel-next">›</button>' +
+        '<div class="ui-carousel-dots">' + dotsHtml + '</div></div>\n';
+    }
+    if (node.type === "SocialIcons"){
+      var socialHtml = (node.items || []).map(function(raw){
+        var parsed = parseSocialItem(raw);
+        return '<a class="ui-social-icon" href="' + escapeHtml(parsed.url) + '" target="_blank" rel="noopener" title="' + escapeHtml(parsed.platform) + '">' + escapeHtml(getPlatformGlyph(parsed.platform)) + '</a>';
+      }).join("");
+      return pad + '<div class="' + cls + '">' + socialHtml + '</div>\n';
+    }
+    if (node.type === "Tabs" || node.type === "Accordion"){
+      var kids = node.children || [];
+      var labels = node.tabLabels || [];
+      if (node.type === "Tabs"){
+        var navHtml = kids.map(function(cid, idx){
+          return '<button type="button" class="ui-tabs-nav-btn' + (idx === 0 ? " active" : "") + '" data-tab-index="' + idx + '">' + escapeHtml(labels[idx] || ("Tab " + (idx+1))) + '</button>';
+        }).join("");
+        var panelsHtml = kids.map(function(cid, idx){
+          var child = state.model.nodes[cid];
+          return '<div class="ui-tabs-panel' + (idx === 0 ? " active" : "") + '" data-tab-index="' + idx + '">' + (child ? nodeHtml(child, indent + 2).trim() : "") + '</div>';
+        }).join("");
+        return pad + '<div class="' + cls + ' ui-tabs">' +
+          '<div class="ui-tabs-nav">' + navHtml + '</div>' +
+          '<div class="ui-tabs-panels">' + panelsHtml + '</div></div>\n';
+      } else {
+        var sectionsHtml = kids.map(function(cid, idx){
+          var child = state.model.nodes[cid];
+          return '<div class="ui-accordion-section">' +
+            '<button type="button" class="ui-accordion-header' + (idx === 0 ? " active" : "") + '" data-section-index="' + idx + '">' + escapeHtml(labels[idx] || ("Section " + (idx+1))) + '</button>' +
+            '<div class="ui-accordion-body' + (idx === 0 ? " active" : "") + '" data-section-index="' + idx + '">' + (child ? nodeHtml(child, indent + 2).trim() : "") + '</div></div>';
+        }).join("");
+        return pad + '<div class="' + cls + ' ui-accordion">' + sectionsHtml + '</div>\n';
+      }
+    }
+    var inner = (node.children || []).map(function(cid){
+      var child = state.model.nodes[cid];
+      return child ? nodeHtml(child, indent + 1) : "";
+    }).join("");
+    return pad + '<' + tag + ' class="' + cls + '">\n' + inner + pad + '</' + tag + '>\n';
+  }
+
+  var STATIC_HELPER_CSS = [
+    ".ui-iconbox-icon{ font-size:32px; }",
+    ".ui-iconbox-heading, .ui-imagebox-heading{ margin:10px 0 4px; font-size:16px; color:#0f172a; }",
+    ".ui-iconbox-text, .ui-imagebox-text{ margin:0; font-size:13px; color:#64748b; }",
+    ".ui-imagebox-img{ width:100%; border-radius:6px; display:block; }",
+    ".ui-testimonial-quote{ font-style:italic; margin:0 0 14px; color:#1a1a1a; }",
+    ".ui-testimonial-author{ display:flex; align-items:center; gap:10px; }",
+    ".ui-testimonial-avatar{ width:36px; height:36px; border-radius:999px; background:#94a3b8; color:#fff; display:flex; align-items:center; justify-content:center; font-size:13px; flex:0 0 auto; }",
+    ".ui-testimonial-name{ font-weight:700; font-size:13px; color:#0f172a; }",
+    ".ui-testimonial-role{ font-size:12px; color:#64748b; }",
+    ".ui-progress-label{ font-size:12px; color:#475569; margin-bottom:5px; }",
+    ".ui-progress-track{ width:100%; height:100%; border-radius:999px; background:rgba(0,0,0,0.08); overflow:hidden; }",
+    ".ui-progress-fill{ height:100%; background:#2563eb; border-radius:999px; transition:width .4s ease; }",
+    ".ui-social-icon{ display:inline-flex; align-items:center; justify-content:center; width:32px; height:32px; border-radius:999px; background:#0f172a; color:#fff; font-size:12px; text-decoration:none; margin-right:6px; }",
+    ".ui-carousel{ position:relative; overflow:hidden; }",
+    ".ui-carousel-track{ display:flex; transition:transform .35s ease; height:100%; }",
+    ".ui-carousel-track img{ width:100%; flex:0 0 100%; object-fit:cover; }",
+    ".ui-carousel-prev, .ui-carousel-next{ position:absolute; top:50%; transform:translateY(-50%); width:32px; height:32px; border-radius:999px; border:none; background:rgba(0,0,0,0.45); color:#fff; font-size:18px; cursor:pointer; }",
+    ".ui-carousel-prev{ left:10px; } .ui-carousel-next{ right:10px; }",
+    ".ui-carousel-dots{ position:absolute; bottom:10px; left:50%; transform:translateX(-50%); display:flex; gap:6px; }",
+    ".ui-carousel-dots button{ width:8px; height:8px; border-radius:999px; border:none; background:rgba(255,255,255,0.5); cursor:pointer; padding:0; }",
+    ".ui-carousel-dots button.active{ background:#fff; }",
+    ".ui-tabs-nav{ display:flex; gap:4px; border-bottom:1px solid #e2e8f0; margin-bottom:16px; }",
+    ".ui-tabs-nav-btn{ background:none; border:none; padding:10px 16px; font-size:14px; color:#64748b; cursor:pointer; border-bottom:2px solid transparent; }",
+    ".ui-tabs-nav-btn.active{ color:#2563eb; border-bottom-color:#2563eb; }",
+    ".ui-tabs-panel{ display:none; } .ui-tabs-panel.active{ display:block; }",
+    ".ui-accordion-header{ width:100%; text-align:left; background:#f8fafc; border:1px solid #e2e8f0; padding:12px 16px; font-size:14px; cursor:pointer; border-radius:6px; margin-top:8px; }",
+    ".ui-accordion-header.active{ color:#2563eb; }",
+    ".ui-accordion-body{ display:none; padding:12px 4px; }",
+    ".ui-accordion-body.active{ display:block; }"
+  ].join("\n") + "\n\n";
+
+  function generateCss(){
+    var css = "* { box-sizing: border-box; }\nbody { margin: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }\n.page { min-height: 100vh; }\n\n";
+    css += STATIC_HELPER_CSS;
+    Object.keys(state.model.nodes).forEach(function(id){
+      var node = state.model.nodes[id];
+      var rule = nodeCssRules(node);
+      if (rule) css += rule + "\n";
+    });
+
+    ["tablet", "mobile"].forEach(function(device){
+      var mediaBody = "";
+      Object.keys(state.model.nodes).forEach(function(id){
+        var rule = nodeResponsiveCssRules(state.model.nodes[id], device);
+        if (rule) mediaBody += rule;
+      });
+      if (mediaBody){
+        css += "@media (max-width: " + MEDIA_QUERY_MAX_WIDTH[device] + "px) {\n" + mediaBody + "}\n\n";
+      }
+    });
+
+    return css.trim() + "\n";
+  }
+
+  function generateJs(){
+    return [
+      "document.addEventListener('DOMContentLoaded', function () {",
+      "",
+      "  // Image Carousel",
+      "  document.querySelectorAll('.ui-carousel').forEach(function (carousel) {",
+      "    var track = carousel.querySelector('.ui-carousel-track');",
+      "    var slides = track ? track.children.length : 0;",
+      "    var index = 0;",
+      "    var dots = carousel.querySelectorAll('.ui-carousel-dots button');",
+      "    function show(i) {",
+      "      index = (i + slides) % slides;",
+      "      track.style.transform = 'translateX(-' + (index * 100) + '%)';",
+      "      dots.forEach(function (d, di) { d.classList.toggle('active', di === index); });",
+      "    }",
+      "    var prevBtn = carousel.querySelector('.ui-carousel-prev');",
+      "    var nextBtn = carousel.querySelector('.ui-carousel-next');",
+      "    if (prevBtn) prevBtn.addEventListener('click', function () { show(index - 1); });",
+      "    if (nextBtn) nextBtn.addEventListener('click', function () { show(index + 1); });",
+      "    dots.forEach(function (d, di) { d.addEventListener('click', function () { show(di); }); });",
+      "    if (slides > 0) show(0);",
+      "  });",
+      "",
+      "  // Nested Tabs",
+      "  document.querySelectorAll('.ui-tabs').forEach(function (tabs) {",
+      "    var navBtns = tabs.querySelectorAll('.ui-tabs-nav-btn');",
+      "    var panels = tabs.querySelectorAll('.ui-tabs-panel');",
+      "    navBtns.forEach(function (btn) {",
+      "      btn.addEventListener('click', function () {",
+      "        var idx = btn.getAttribute('data-tab-index');",
+      "        navBtns.forEach(function (b) { b.classList.remove('active'); });",
+      "        panels.forEach(function (p) { p.classList.remove('active'); });",
+      "        btn.classList.add('active');",
+      "        tabs.querySelector('.ui-tabs-panel[data-tab-index=\"' + idx + '\"]').classList.add('active');",
+      "      });",
+      "    });",
+      "  });",
+      "",
+      "  // Nested Accordion",
+      "  document.querySelectorAll('.ui-accordion-header').forEach(function (header) {",
+      "    header.addEventListener('click', function () {",
+      "      var body = header.nextElementSibling;",
+      "      var isOpen = header.classList.contains('active');",
+      "      header.classList.toggle('active', !isOpen);",
+      "      if (body) body.classList.toggle('active', !isOpen);",
+      "    });",
+      "  });",
+      "",
+      "  // Counter — animates once each counter scrolls into view",
+      "  var counters = document.querySelectorAll('.ui-counter');",
+      "  if ('IntersectionObserver' in window && counters.length) {",
+      "    var observer = new IntersectionObserver(function (entries) {",
+      "      entries.forEach(function (entry) {",
+      "        if (!entry.isIntersecting) return;",
+      "        var el = entry.target;",
+      "        var end = parseFloat(el.getAttribute('data-end')) || 0;",
+      "        var valueEl = el.querySelector('.ui-counter-value');",
+      "        var start = 0, duration = 1200, startTime = null;",
+      "        function step(ts) {",
+      "          if (!startTime) startTime = ts;",
+      "          var progress = Math.min((ts - startTime) / duration, 1);",
+      "          valueEl.textContent = Math.round(start + (end - start) * progress);",
+      "          if (progress < 1) requestAnimationFrame(step);",
+      "        }",
+      "        requestAnimationFrame(step);",
+      "        observer.unobserve(el);",
+      "      });",
+      "    }, { threshold: 0.4 });",
+      "    counters.forEach(function (el) { observer.observe(el); });",
+      "  }",
+      "});"
+    ].join("\n") + "\n";
+  }
+
+  function generateHtmlBody(){
+    return nodeHtml(state.model.nodes[state.model.rootId], 0);
+  }
+
+  function hasInteractiveComponents(){
+    return Object.keys(state.model.nodes).some(function(id){
+      var t = state.model.nodes[id].type;
+      return t === "ImageCarousel" || t === "Tabs" || t === "Accordion" || t === "Counter";
+    });
+  }
+
+  function generateFullDocument(){
+    var scriptTag = hasInteractiveComponents() ? ("<script>\n" + generateJs() + "<\/script>\n") : "";
+    return "<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n<meta charset=\"UTF-8\">\n<meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n<title>Exported Page</title>\n<style>\n" +
+      generateCss() + "</style>\n</head>\n<body>\n" + generateHtmlBody() + scriptTag + "</body>\n</html>\n";
+  }
+
+  function refreshCodeViewIfActive(){
+    if (state.activeView !== "code") return;
+    document.getElementById("code-html").textContent = generateHtmlBody();
+    document.getElementById("code-css").textContent = generateCss();
+    document.getElementById("code-js").textContent = hasInteractiveComponents() ? generateJs() : "/* No interactive components (Carousel, Tabs, Accordion, Counter) in this project yet. */";
+  }
+
+  /* =========================================================
+     14. TOAST
+     ========================================================= */
+
+  var toastTimer = null;
+  function showToast(msg){
+    var toast = document.getElementById("toast");
+    toast.textContent = msg;
+    toast.classList.add("show");
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function(){ toast.classList.remove("show"); }, 1800);
+  }
+
+  /* =========================================================
+     15. TOOLBAR / VIEW / DEVICE WIRING
+     ========================================================= */
+
+  document.getElementById("btn-undo").addEventListener("click", undo);
+  document.getElementById("btn-redo").addEventListener("click", redo);
+
+  function openTemplateModal(){
+    var grid = document.getElementById("template-grid");
+    grid.innerHTML = "";
+    Object.keys(TEMPLATES).forEach(function(key){
+      var tpl = TEMPLATES[key];
+      var card = document.createElement("div");
+      card.className = "template-card";
+      card.innerHTML = '<span class="t-glyph">' + tpl.glyph + '</span>' +
+        '<span class="t-name">' + tpl.label + '</span>' +
+        '<span class="t-desc">' + tpl.description + '</span>';
+      card.addEventListener("click", function(){
+        applyTemplate(key);
+      });
+      grid.appendChild(card);
+    });
+    document.getElementById("template-modal").style.display = "flex";
+  }
+
+  function closeTemplateModal(){
+    document.getElementById("template-modal").style.display = "none";
+  }
+
+  function applyTemplate(key){
+    if (!confirm("Start a new project? Unsaved changes in this project will be lost.")) return;
+    state.model = TEMPLATES[key].build();
+    state.selectedId = null;
+    state.history = []; state.historyIndex = -1;
+    pushHistory(); renderAll(); scheduleAutosave(); refreshCodeViewIfActive();
+    closeTemplateModal();
+    showToast('Started from "' + TEMPLATES[key].label + '"');
+  }
+
+  document.getElementById("btn-new").addEventListener("click", openTemplateModal);
+  document.getElementById("template-cancel").addEventListener("click", closeTemplateModal);
+  document.getElementById("template-modal").addEventListener("click", function(e){
+    if (e.target.id === "template-modal") closeTemplateModal();
+  });
+
+  document.getElementById("btn-export-json").addEventListener("click", function(){
+    downloadFile("project.json", JSON.stringify(state.model, null, 2), "application/json");
+    showToast("Project exported as project.json");
+  });
+
+  document.getElementById("btn-export-html").addEventListener("click", function(){
+    downloadFile("index.html", generateFullDocument(), "text/html");
+    showToast("Exported index.html — ready to deploy");
+  });
+
+  document.getElementById("btn-import").addEventListener("click", function(){
+    document.getElementById("file-input").click();
+  });
+
+  document.getElementById("file-input").addEventListener("change", function(e){
+    var file = e.target.files[0];
+    if (!file) return;
+    var reader = new FileReader();
+    reader.onload = function(){
+      try {
+        var parsed = JSON.parse(reader.result);
+        if (!parsed.rootId || !parsed.nodes) throw new Error("Invalid project file");
+        state.model = parsed;
+        state.selectedId = null;
+        state.history = []; state.historyIndex = -1;
+        pushHistory(); renderAll(); scheduleAutosave(); refreshCodeViewIfActive();
+        showToast("Project imported");
+      } catch(err){
+        showToast("Could not read that file as a project");
+      }
+    };
+    reader.readAsText(file);
+    e.target.value = "";
+  });
+
+  function downloadFile(filename, content, mime){
+    var blob = new Blob([content], { type: mime });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement("a");
+    a.href = url; a.download = filename;
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    setTimeout(function(){ URL.revokeObjectURL(url); }, 500);
+  }
+
+  document.querySelectorAll(".panel-tab[data-tab]").forEach(function(tab){
+    tab.addEventListener("click", function(){
+      document.querySelectorAll(".panel-tab[data-tab]").forEach(function(t){ t.classList.remove("active"); });
+      tab.classList.add("active");
+      state.activeTab = tab.dataset.tab;
+      document.getElementById("tab-components").style.display = state.activeTab === "components" ? "block" : "none";
+      document.getElementById("tab-layers").style.display = state.activeTab === "layers" ? "block" : "none";
+    });
+  });
+
+  document.querySelectorAll("[data-view]").forEach(function(btn){
+    btn.addEventListener("click", function(){
+      document.querySelectorAll("[data-view]").forEach(function(b){ b.classList.remove("active"); });
+      btn.classList.add("active");
+      state.activeView = btn.dataset.view;
+      var codeView = document.getElementById("code-view");
+      var canvasViewport = document.getElementById("canvas-viewport");
+      if (state.activeView === "code"){
+        codeView.classList.add("active");
+        canvasViewport.classList.add("hidden");
+        refreshCodeViewIfActive();
+      } else {
+        codeView.classList.remove("active");
+        canvasViewport.classList.remove("hidden");
+      }
+    });
+  });
+
+  document.querySelectorAll("[data-device]").forEach(function(btn){
+    btn.addEventListener("click", function(){
+      document.querySelectorAll("[data-device]").forEach(function(b){ b.classList.remove("active"); });
+      btn.classList.add("active");
+      state.activeDevice = btn.dataset.device;
+      var frame = document.getElementById("canvas-frame");
+      frame.classList.remove("device-tablet", "device-mobile");
+      if (state.activeDevice === "tablet") frame.classList.add("device-tablet");
+      if (state.activeDevice === "mobile") frame.classList.add("device-mobile");
+      renderCanvas();
+      renderInspector();
+      refreshCodeViewIfActive();
+      setTimeout(positionSelectionOverlay, 200);
+    });
+  });
+
+  document.querySelectorAll('[data-copy]').forEach(function(btn){
+    btn.addEventListener("click", function(){
+      var id = "code-" + btn.dataset.copy;
+      var text = document.getElementById(id).textContent;
+      if (navigator.clipboard && navigator.clipboard.writeText){
+        navigator.clipboard.writeText(text).then(function(){ showToast("Copied to clipboard"); });
+      }
+    });
+  });
+
+  /* =========================================================
+     16. KEYBOARD SHORTCUTS
+     ========================================================= */
+
+  document.addEventListener("keydown", function(e){
+    var tag = (e.target.tagName || "").toLowerCase();
+    if (tag === "input" || tag === "textarea" || tag === "select") return;
+
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "z" && !e.shiftKey){ e.preventDefault(); undo(); return; }
+    if ((e.ctrlKey || e.metaKey) && (e.key.toLowerCase() === "y" || (e.key.toLowerCase() === "z" && e.shiftKey))){ e.preventDefault(); redo(); return; }
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "d"){ e.preventDefault(); if (state.selectedId) doDuplicate(state.selectedId); return; }
+    if ((e.key === "Delete" || e.key === "Backspace") && state.selectedId){ e.preventDefault(); doDelete(state.selectedId); return; }
+  });
+
+  /* =========================================================
+     17. INIT
+     ========================================================= */
+
+  function renderAll(){
+    renderCanvas();
+    renderLayers();
+    renderInspector();
+    updateHistoryButtons();
+  }
+
+  function init(){
+    buildPalette();
+    var loaded = loadFromStorage();
+    state.model = loaded || defaultModel();
+    pushHistory();
+    renderAll();
+  }
+
+  init();
+
+})();
+</script>
+</body>
+</html>
